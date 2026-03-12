@@ -5,14 +5,19 @@ interface AddCustomerModalProps {
     isOpen: boolean;
     onClose: () => void;
     onAdd: (customer: any) => Promise<void>;
+    suggestedModels?: string[];
 }
 
-export function AddCustomerModal({ isOpen, onClose, onAdd }: AddCustomerModalProps) {
+export function AddCustomerModal({ isOpen, onClose, onAdd, suggestedModels = [] }: AddCustomerModalProps) {
     const [formData, setFormData] = useState({
         name: '',
         phone: '',
         email: '',
-        vehicles: [] as string[]
+        vehicles: [] as string[],
+        last_mileage: 0,
+        last_vin: '',
+        last_model: '',
+        last_engine_id: ''
     });
     const [patenteInput, setPatenteInput] = useState('');
     const [loading, setLoading] = useState(false);
@@ -132,6 +137,57 @@ export function AddCustomerModal({ isOpen, onClose, onAdd }: AddCustomerModalPro
                                 </span>
                             ))}
                         </div>
+                    </div>
+
+                    <div className="space-y-2">
+                        <label className="text-sm font-semibold text-zinc-700">Marca y Modelo (Historial)</label>
+                        <input
+                            type="text"
+                            list="customer-vehicle-models"
+                            placeholder="Ej: Toyota Hilux"
+                            className="w-full px-4 py-2.5 rounded-xl border border-zinc-200 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 outline-none transition-all font-bold"
+                            value={formData.last_model}
+                            onChange={e => setFormData({ ...formData, last_model: e.target.value })}
+                        />
+                        <datalist id="customer-vehicle-models">
+                            {suggestedModels.map(m => (
+                                <option key={m} value={m} />
+                            ))}
+                        </datalist>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                            <label className="text-sm font-semibold text-zinc-700">N° Motor</label>
+                            <input
+                                type="text"
+                                placeholder="ID Motor"
+                                className="w-full px-4 py-2.5 rounded-xl border border-zinc-200 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 outline-none transition-all font-mono uppercase"
+                                value={formData.last_engine_id}
+                                onChange={e => setFormData({ ...formData, last_engine_id: e.target.value.toUpperCase() })}
+                            />
+                        </div>
+                        <div className="space-y-2">
+                            <label className="text-sm font-semibold text-zinc-700">Chasis (VIN)</label>
+                            <input
+                                type="text"
+                                placeholder="ID Vehículo"
+                                className="w-full px-4 py-2.5 rounded-xl border border-zinc-200 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 outline-none transition-all font-mono uppercase"
+                                value={formData.last_vin}
+                                onChange={e => setFormData({ ...formData, last_vin: e.target.value.toUpperCase() })}
+                            />
+                        </div>
+                    </div>
+
+                    <div className="space-y-2">
+                        <label className="text-sm font-semibold text-zinc-700">Último Kilometraje (KM)</label>
+                        <input
+                            type="number"
+                            placeholder="0"
+                            className="w-full px-4 py-2.5 rounded-xl border border-zinc-200 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 outline-none transition-all"
+                            value={formData.last_mileage || ''}
+                            onChange={e => setFormData({ ...formData, last_mileage: parseInt(e.target.value) || 0 })}
+                        />
                     </div>
 
                     <div className="pt-4 flex justify-end gap-3 border-t border-zinc-100">

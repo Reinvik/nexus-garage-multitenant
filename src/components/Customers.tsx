@@ -1,10 +1,12 @@
-import React, { useState } from 'react';
-import { Users, Search, Mail, Phone, Car, Calendar, X, Edit2, MessageCircle } from 'lucide-react';
+import React, { useState, useMemo } from 'react';
+import { Users, Search, Mail, Phone, Car, Calendar, X, Edit2, MessageCircle, Info, History, Trash2 } from 'lucide-react';
 import { formatDistanceToNow, parseISO, format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { cn } from '../lib/utils';
 import { AddCustomerModal } from './AddCustomerModal';
 import { EditCustomerModal } from './EditCustomerModal';
+import { ConfirmModal } from './ConfirmModal';
+import { VehicleCRMModal } from './VehicleCRMModal';
 import { Customer, Ticket, TicketStatus, GarageSettings } from '../types';
 
 interface CustomersProps {
@@ -13,6 +15,8 @@ interface CustomersProps {
   settings: GarageSettings | null;
   onAddCustomer: (customer: any) => Promise<void>;
   onUpdateCustomer: (id: string, updates: Partial<Customer>) => Promise<void>;
+  deleteCustomer: (id: string) => Promise<void>;
+  onUpdateNotes: (id: string, notes: string) => Promise<void>;
 }
 
 const statusMap: Record<TicketStatus, string> = {
@@ -20,14 +24,35 @@ const statusMap: Record<TicketStatus, string> = {
   'En Espera': 'en espera',
   'En Reparación': 'en proceso',
   'Listo para Entrega': 'listo para entrega',
-  'Finalizado': 'entregado'
+  'Finalizado': 'entregado',
+  'Entregado': 'entregado'
 };
 
-export function Customers({ customers, tickets, settings, onAddCustomer, onUpdateCustomer }: CustomersProps) {
+export function Customers({ customers, tickets, settings, onAddCustomer, onUpdateCustomer, deleteCustomer, onUpdateNotes }: CustomersProps) {
   const [searchTerm, setSearchTerm] = useState('');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
+  const [customerToDelete, setCustomerToDelete] = useState<Customer | null>(null);
+  const [crmTicket, setCrmTicket] = useState<Ticket | null>(null);
+
+  const handleShowCRM = (patente: string) => {
+    const found = tickets.find(t => t.id === patente);
+    if (found) {
+      setCrmTicket(found);
+    } else {
+      alert('Sin historial registrado para este vehículo todavía.');
+    }
+  };
+
+
+
+  const suggestedModels = useMemo(() => {
+    const models = new Set<string>();
+    tickets.forEach(t => t.model && models.add(t.model));
+    customers.forEach(c => c.last_model && models.add(c.last_model));
+    return Array.from(models).sort();
+  }, [tickets, customers]);
 
   const handleEdit = (customer: Customer) => {
     setSelectedCustomer(customer);
@@ -82,6 +107,7 @@ export function Customers({ customers, tickets, settings, onAddCustomer, onUpdat
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
         onAdd={onAddCustomer}
+        suggestedModels={suggestedModels}
       />
 
       <div className="bg-white rounded-2xl shadow-sm border border-zinc-200 overflow-hidden">
@@ -150,12 +176,42 @@ export function Customers({ customers, tickets, settings, onAddCustomer, onUpdat
                   <p className="text-[10px] uppercase font-bold text-zinc-400 tracking-wider">Vehículos</p>
                   <div className="flex flex-wrap gap-2">
                     {customer.vehicles.map(v => (
-                      <span key={v} className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold bg-zinc-100 text-zinc-700 border border-zinc-200">
+                      <button 
+                        key={v} 
+                        onClick={() => handleShowCRM(v)}
+                        className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold bg-zinc-100/80 hover:bg-zinc-200 text-emerald-700 hover:text-emerald-800 border border-zinc-200 transition-colors cursor-pointer"
+                        title="Ver CRM del Vehículo"
+                      >
                         {v}
-                      </span>
+                      </button>
                     ))}
                   </div>
                 </div>
+
+                {(customer.last_mileage || customer.last_vin || customer.last_model) && (
+                  <div className="grid grid-cols-1 gap-2 pt-2 border-t border-zinc-50">
+                    {customer.last_model && (
+                      <div className="space-y-0.5">
+                        <p className="text-[10px] uppercase font-bold text-zinc-400">Modelo Principal</p>
+                        <p className="text-xs font-bold text-zinc-900">{customer.last_model}</p>
+                      </div>
+                    )}
+                    <div className="grid grid-cols-2 gap-4">
+                      {customer.last_mileage && (
+                        <div className="space-y-0.5">
+                          <p className="text-[10px] uppercase font-bold text-zinc-400">Últ. KM</p>
+                          <p className="text-xs font-bold text-zinc-700">{customer.last_mileage.toLocaleString()} KM</p>
+                        </div>
+                      )}
+                      {customer.last_vin && (
+                        <div className="space-y-0.5">
+                          <p className="text-[10px] uppercase font-bold text-zinc-400">VIN / Chasis</p>
+                          <p className="text-[10px] font-mono font-bold text-zinc-700 truncate">{customer.last_vin}</p>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
               </div>
             ))
           )}
@@ -168,8 +224,8 @@ export function Customers({ customers, tickets, settings, onAddCustomer, onUpdat
               <tr className="bg-zinc-50 border-b border-zinc-200 text-xs font-semibold text-zinc-500 uppercase tracking-wider">
                 <th className="px-6 py-4">Cliente</th>
                 <th className="px-6 py-4">Contacto</th>
-                <th className="px-6 py-4">Vehículos (Patentes)</th>
-                <th className="px-6 py-4">Última Visita</th>
+                <th className="px-6 py-4">Vehículos / Historial</th>
+                <th className="px-6 py-4 text-left">Última Visita</th>
                 <th className="px-6 py-4 text-center">Acciones</th>
               </tr>
             </thead>
@@ -207,13 +263,42 @@ export function Customers({ customers, tickets, settings, onAddCustomer, onUpdat
                       </div>
                     </td>
                     <td className="px-6 py-4">
-                      <div className="flex flex-wrap gap-2">
-                        {customer.vehicles.map(v => (
-                          <span key={v} className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-mono font-bold bg-zinc-100 text-zinc-700 border border-zinc-200">
-                            <Car className="w-3.5 h-3.5 text-zinc-400" />
-                            {v}
-                          </span>
-                        ))}
+                      <div className="flex flex-col gap-3">
+                        <div className="flex flex-wrap gap-2">
+                          {customer.vehicles.map(v => (
+                            <button 
+                              key={v} 
+                              onClick={() => handleShowCRM(v)}
+                              className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-mono font-bold bg-zinc-100/80 hover:bg-zinc-200 text-emerald-700 hover:text-emerald-800 border border-zinc-200 transition-colors cursor-pointer shadow-sm"
+                              title="Ver CRM del Vehículo"
+                            >
+                              <Car className="w-3.5 h-3.5 opacity-70" />
+                              {v}
+                            </button>
+                          ))}
+                        </div>
+                        {(customer.last_mileage || customer.last_vin || customer.last_model) && (
+                          <div className="flex flex-wrap items-center gap-3 text-[10px] font-bold">
+                            {customer.last_model && (
+                              <div className="flex items-center gap-1 text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-100">
+                                <Car className="w-3 h-3 text-emerald-500" />
+                                {customer.last_model}
+                              </div>
+                            )}
+                            {customer.last_mileage && (
+                              <div className="flex items-center gap-1 text-blue-600 bg-blue-50 px-2 py-0.5 rounded-md border border-blue-100">
+                                <History className="w-3 h-3 text-blue-400" />
+                                {customer.last_mileage.toLocaleString()} KM
+                              </div>
+                            )}
+                            {customer.last_vin && (
+                              <div className="flex items-center gap-1 text-zinc-500 bg-zinc-100 px-2 py-0.5 rounded-md border border-zinc-200">
+                                <Info className="w-3 h-3 text-zinc-400" />
+                                VIN: {customer.last_vin}
+                              </div>
+                            )}
+                          </div>
+                        )}
                       </div>
                     </td>
                     <td className="px-6 py-4">
@@ -235,15 +320,24 @@ export function Customers({ customers, tickets, settings, onAddCustomer, onUpdat
                       <div className="flex items-center justify-center gap-2">
                         <button
                           onClick={() => handleWhatsApp(customer)}
-                          className="p-2 text-emerald-600 hover:bg-emerald-50 rounded-lg transition-colors title='Enviar WhatsApp'"
+                          className="p-2 text-emerald-600 hover:bg-emerald-50 rounded-lg transition-colors"
+                          title="Enviar WhatsApp"
                         >
                           <MessageCircle className="w-5 h-5" />
                         </button>
                         <button
                           onClick={() => handleEdit(customer)}
-                          className="p-2 text-zinc-400 hover:text-zinc-600 hover:bg-zinc-100 rounded-lg transition-colors title='Editar Cliente'"
+                          className="p-2 text-zinc-400 hover:text-zinc-600 hover:bg-zinc-100 rounded-lg transition-colors"
+                          title="Editar Cliente"
                         >
                           <Edit2 className="w-5 h-5" />
+                        </button>
+                        <button
+                          onClick={() => setCustomerToDelete(customer)}
+                          className="p-2 text-zinc-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                          title="Eliminar Cliente"
+                        >
+                          <Trash2 className="w-5 h-5" />
                         </button>
                       </div>
                     </td>
@@ -260,6 +354,30 @@ export function Customers({ customers, tickets, settings, onAddCustomer, onUpdat
         onClose={() => setIsEditModalOpen(false)}
         customer={selectedCustomer}
         onUpdate={onUpdateCustomer}
+        suggestedModels={suggestedModels}
+      />
+
+      <ConfirmModal
+        isOpen={customerToDelete !== null}
+        title="Eliminar Cliente"
+        message={`¿Estás seguro que deseas eliminar al cliente ${customerToDelete?.name}? Esta acción no se puede deshacer.`}
+        onConfirm={async () => {
+          if (customerToDelete) {
+            try {
+              await deleteCustomer(customerToDelete.id);
+            } catch (error) {
+              alert('Error al eliminar cliente');
+            }
+          }
+        }}
+        onCancel={() => setCustomerToDelete(null)}
+      />
+
+      <VehicleCRMModal
+        isOpen={crmTicket !== null}
+        onClose={() => setCrmTicket(null)}
+        ticket={crmTicket}
+        onUpdateNotes={onUpdateNotes}
       />
     </div>
   );

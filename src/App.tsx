@@ -36,11 +36,11 @@ export default function App() {
     tickets, mechanics, parts, customers, settings, loading, reminders, notifications,
     addTicket, updateTicketStatus, updateTicket, searchTicket,
     addPart, updatePart,
-    addCustomer, updateCustomer,
+    addCustomer, updateCustomer, deleteCustomer,
     updateSettings,
     addMechanic, deleteMechanic,
     acceptQuotation, markNotificationAsRead,
-    clearFinishedTickets
+    clearFinishedTickets, deleteTicket
   } = useGarageStore();
 
   const currentCustomerTicket = searchedPatente ? searchTicket(searchedPatente) : null;
@@ -99,10 +99,15 @@ export default function App() {
         <KanbanBoard
           tickets={tickets}
           mechanics={mechanics}
+          reminders={reminders}
+          settings={settings}
           onUpdateStatus={updateTicketStatus}
           onEditTicket={handleEditTicket}
           onAddTicket={() => setIsAddModalOpen(true)}
           onClearFinished={clearFinishedTickets}
+          onUpdateNotes={async (id, notes) => {
+            await updateTicket(id, { vehicle_notes: notes });
+          }}
         />
       )}
 
@@ -125,6 +130,10 @@ export default function App() {
           settings={settings}
           onAddCustomer={addCustomer}
           onUpdateCustomer={updateCustomer}
+          deleteCustomer={deleteCustomer}
+          onUpdateNotes={async (id, notes) => {
+            await updateTicket(id, { vehicle_notes: notes });
+          }}
         />
       )}
 
@@ -154,6 +163,8 @@ export default function App() {
         onClose={() => setIsAddModalOpen(false)}
         onAdd={addTicket}
         mechanics={mechanics}
+        customers={customers}
+        tickets={tickets}
       />
 
       <AddMechanicModal

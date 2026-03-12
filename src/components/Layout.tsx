@@ -20,7 +20,20 @@ interface LayoutProps {
 export function Layout({ children, activeTab, setActiveTab, onLogout, notifications, markAsRead, settings, isSuperAdmin }: LayoutProps) {
   const [showNotifications, setShowNotifications] = React.useState(false);
   const [isSidebarOpen, setIsSidebarOpen] = React.useState(false);
+  const [logoError, setLogoError] = React.useState(false);
   const unreadCount = notifications.filter(n => !n.read).length;
+
+  React.useEffect(() => {
+    setLogoError(false);
+  }, [settings?.logo_url]);
+
+  const menuTextColor = settings?.theme_menu_text || '#a1a1aa';
+  const menuHighlightColor = settings?.theme_menu_highlight || '#10b981';
+
+  // Añadir opacidad de 10% (aprox 1A) a highlightColor si tiene formato hexadecimal
+  const highlightBg = menuHighlightColor.startsWith('#') && menuHighlightColor.length === 7 
+    ? `${menuHighlightColor}1A` 
+    : 'rgba(16, 185, 129, 0.1)';
 
   const navItems = [
     { id: 'dashboard', label: 'Tablero Kanban', icon: LayoutDashboard },
@@ -57,13 +70,24 @@ export function Layout({ children, activeTab, setActiveTab, onLogout, notificati
       )}>
         <div className="p-6 flex items-center justify-between border-b border-zinc-800">
           <div className="flex items-center gap-3">
-            {settings?.logo_url ? (
-              <div className="w-8 h-8 rounded-lg overflow-hidden border border-zinc-700">
-                <img src={settings.logo_url} alt="Workshop logo" className="w-full h-full object-cover" />
+            {settings?.logo_url && !logoError ? (
+              <div className="w-16 h-16 rounded-xl overflow-hidden border border-zinc-700 bg-white shadow-sm flex-shrink-0 flex items-center justify-center p-1.5">
+                <img 
+                  src={settings.logo_url} 
+                  alt="Workshop logo" 
+                  className="w-full h-full" 
+                  style={{
+                    objectFit: 'cover',
+                    objectPosition: `${settings.logo_x_offset ?? 50}% ${settings.logo_y_offset ?? 50}%`,
+                    transformOrigin: `${settings.logo_x_offset ?? 50}% ${settings.logo_y_offset ?? 50}%`,
+                    transform: `scale(${settings.logo_scale ?? 1})`
+                  }}
+                  onError={() => setLogoError(true)}
+                />
               </div>
             ) : (
-              <div className="w-8 h-8 rounded-lg bg-emerald-500 flex items-center justify-center">
-                <Wrench className="w-5 h-5 text-zinc-900" />
+              <div className="w-16 h-16 rounded-xl bg-emerald-500 flex items-center justify-center flex-shrink-0">
+                <Wrench className="w-8 h-8 text-zinc-900" />
               </div>
             )}
             <span className="font-bold text-xl tracking-tight leading-tight">{settings?.workshop_name || 'Nexus Garage'}</span>
@@ -83,12 +107,14 @@ export function Layout({ children, activeTab, setActiveTab, onLogout, notificati
             return (
               <button
                 key={item.id}
-                onClick={() => handleTabChange(item.id)}
+                onClick={() => handleTabChange(item.id as any)}
+                style={{
+                  color: isActive ? menuHighlightColor : menuTextColor,
+                  backgroundColor: isActive ? highlightBg : 'transparent'
+                }}
                 className={cn(
-                  "flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-colors",
-                  isActive
-                    ? "bg-emerald-500/10 text-emerald-400 font-bold"
-                    : "text-zinc-400 hover:text-zinc-100 hover:bg-zinc-800/50"
+                  "flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm transition-colors w-full font-medium hover:bg-zinc-800/50",
+                  isActive && "font-bold shadow-sm"
                 )}
               >
                 <Icon className="w-5 h-5" />
@@ -101,11 +127,13 @@ export function Layout({ children, activeTab, setActiveTab, onLogout, notificati
         <div className="p-4 border-t border-zinc-800">
           <button
             onClick={() => handleTabChange('settings')}
+            style={{
+              color: activeTab === 'settings' ? menuHighlightColor : menuTextColor,
+              backgroundColor: activeTab === 'settings' ? highlightBg : 'transparent'
+            }}
             className={cn(
-              "flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-colors w-full",
-              activeTab === 'settings'
-                ? "bg-emerald-500/10 text-emerald-400 font-bold"
-                : "text-zinc-400 hover:text-zinc-100 hover:bg-zinc-800/50"
+              "flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-colors w-full hover:bg-zinc-800/50",
+              activeTab === 'settings' && "font-bold shadow-sm"
             )}
           >
             <Settings className="w-5 h-5" />

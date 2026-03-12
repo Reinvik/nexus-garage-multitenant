@@ -81,51 +81,129 @@ export function useGarageStore() {
     try {
       // 1. Registrar/Actualizar Cliente automáticamente
       if (ticket.owner_name && ticket.owner_phone) {
-        const { data: existingCustomer } = await supabaseGarage.from('customers')
-          .select('id, vehicles')
-          .or(`phone.eq.${ticket.owner_phone},name.eq.${ticket.owner_name}`)
+        // Normalizar teléfono para la búsqueda
+        const normalizedPhone = ticket.owner_phone.replace(/\D/g, '');
+        
+        // Primero intentamos buscar por teléfono (identificador más fiable)
+        let { data: existingCustomer } = await supabaseGarage.from('customers')
+          .select('id, vehicles, last_mileage, last_vin, last_engine_id, last_model')
+          .eq('phone', ticket.owner_phone)
           .maybeSingle();
 
+        // Si no lo encuentra por teléfono exacto, intentamos por nombre (menos fiable, limitamos a 1)
+        if (!existingCustomer) {
+          const { data: byName } = await supabaseGarage.from('customers')
+            .select('id, vehicles, last_mileage, last_vin, last_engine_id, last_model')
+            .eq('name', ticket.owner_name)
+            .limit(1)
+            .maybeSingle();
+          existingCustomer = byName;
+        }
+
         if (existingCustomer) {
-          // Actualizar lista de vehículos si es necesario
+          // Actualizar lista de vehículos y datos de historial si es necesario
           const vehicles = existingCustomer.vehicles || [];
+          const updates: any = {
+            last_visit: new Date().toISOString(),
+            last_mileage: ticket.mileage || existingCustomer.last_mileage,
+            last_vin: ticket.vin || existingCustomer.last_vin,
+            last_engine_id: ticket.engine_id || existingCustomer.last_engine_id,
+            last_model: ticket.model || existingCustomer.last_model
+          };
+
           if (ticket.id && !vehicles.includes(ticket.id)) {
-            await supabaseGarage.from('customers')
-              .update({
-                vehicles: [...vehicles, ticket.id],
-                last_visit: new Date().toISOString()
-              })
-              .eq('id', existingCustomer.id);
+            updates.vehicles = [...vehicles, ticket.id];
           }
+
+          await supabaseGarage.from('customers')
+            .update(updates)
+            .eq('id', existingCustomer.id);
         } else {
-          // Crear nuevo cliente
+          // Crear nuevo cliente con datos iniciales
           await supabaseGarage.from('customers').insert([{
             name: ticket.owner_name,
             phone: ticket.owner_phone,
             vehicles: ticket.id ? [ticket.id] : [],
-            last_visit: new Date().toISOString()
+            last_visit: new Date().toISOString(),
+            last_mileage: ticket.mileage,
+            last_vin: ticket.vin,
+            last_engine_id: ticket.engine_id,
+            last_model: ticket.model
           }]);
         }
       }
 
-      // 2. Registrar el Ticket
-      const { error } = await supabaseGarage.from('tickets').insert([{
-        id: ticket.id,
-        model: ticket.model,
-        status: ticket.status || 'Ingresado',
-        mechanic: ticket.mechanic_id === 'Sin asignar' ? null : ticket.mechanic_id,
-        owner_name: ticket.owner_name,
-        owner_phone: ticket.owner_phone,
-        notes: ticket.notes,
-        parts_needed: ticket.parts_needed || [],
-        entry_date: new Date().toISOString(),
-        last_status_change: new Date().toISOString(),
-        vin: ticket.vin,
-        engine_id: ticket.engine_id,
-        mileage: ticket.mileage
-      }]);
+      // 2. Comprobar si el vehículo ya tiene un ticket "vivo" o archivado
+      const { data: existingTicket } = await supabaseGarage.from('tickets')
+        .select('*')
+        .eq('id', ticket.id)
+        .maybeSingle();
 
-      if (error) throw error;
+      const initialHistory = [{
+        status: ticket.status || 'Ingresado',
+        date: new Date().toISOString(),
+        user: 'Sistema / Recepción'
+      }];
+
+      if (existingTicket) {
+        // Vehículo reingresado
+        // Si no está "Entregado", igual forzamos el reingreso (o podriamos bloquearlo, pero el CRM manda)
+        // Guardamos el historial de la visita en service_log
+        const newLogEntry = {
+          date: existingTicket.close_date || new Date().toISOString(),
+          notes: existingTicket.notes || '',
+          parts: existingTicket.parts_needed || [],
+          cost: existingTicket.cost || existingTicket.quotation_total || 0,
+          mileage: existingTicket.mileage || 0
+        };
+
+        const newServiceLog = [...(existingTicket.service_log || []), newLogEntry];
+
+        const { error } = await supabaseGarage.from('tickets')
+          .update({
+             status: ticket.status || 'Ingresado',
+             status_history: initialHistory, // reseteamos el timeline para la visita actual
+             service_log: newServiceLog,
+             mechanic: ticket.mechanic_id === 'Sin asignar' ? null : ticket.mechanic_id,
+             owner_name: ticket.owner_name,
+             owner_phone: ticket.owner_phone,
+             notes: ticket.notes,
+             parts_needed: ticket.parts_needed || [],
+             entry_date: new Date().toISOString(),
+             last_status_change: new Date().toISOString(),
+             close_date: null,
+             quotation_total: 0,
+             quotation_accepted: false,
+             vin: ticket.vin || existingTicket.vin,
+             engine_id: ticket.engine_id || existingTicket.engine_id,
+             mileage: ticket.mileage || existingTicket.mileage
+          })
+          .eq('id', ticket.id);
+
+        if (error) throw error;
+      } else {
+        // Vehículo nuevo
+        const { error } = await supabaseGarage.from('tickets').insert([{
+          id: ticket.id,
+          model: ticket.model,
+          status: ticket.status || 'Ingresado',
+          status_history: initialHistory,
+          service_log: [],
+          mechanic: ticket.mechanic_id === 'Sin asignar' ? null : ticket.mechanic_id,
+          owner_name: ticket.owner_name,
+          owner_phone: ticket.owner_phone,
+          notes: ticket.notes,
+          parts_needed: ticket.parts_needed || [],
+          entry_date: new Date().toISOString(),
+          last_status_change: new Date().toISOString(),
+          vin: ticket.vin,
+          engine_id: ticket.engine_id,
+          mileage: ticket.mileage,
+          vehicle_notes: ''
+        }]);
+
+        if (error) throw error;
+      }
       await fetchData();
     } catch (error) {
       console.error('Error adding ticket:', error);
@@ -133,12 +211,36 @@ export function useGarageStore() {
     }
   };
 
-  const updateTicketStatus = async (ticketId: string, status: TicketStatus) => {
+  const deleteTicket = async (id: string) => {
+    try {
+      const { error } = await supabaseGarage.from('tickets').delete().eq('id', id);
+      if (error) throw error;
+      await fetchData();
+    } catch (error) {
+      console.error('Error deleting ticket:', error);
+      throw error;
+    }
+  };
+
+  const updateTicketStatus = async (ticketId: string, status: TicketStatus, changedBy: string = 'Recepción/Admin') => {
     try {
       const now = new Date().toISOString();
+      
+      const { data: currentTicket } = await supabaseGarage.from('tickets')
+        .select('status_history')
+        .eq('id', ticketId)
+        .single();
+      
+      const newHistory = [...(currentTicket?.status_history || []), {
+        status,
+        date: now,
+        user: changedBy
+      }];
+
       const { error } = await supabaseGarage.from('tickets')
         .update({
           status,
+          status_history: newHistory,
           last_status_change: now,
           close_date: status === 'Finalizado' ? now : null
         })
@@ -220,6 +322,17 @@ export function useGarageStore() {
       await fetchData();
     } catch (error) {
       console.error('Error updating customer:', error);
+      throw error;
+    }
+  };
+
+  const deleteCustomer = async (id: string) => {
+    try {
+      const { error } = await supabaseGarage.from('customers').delete().eq('id', id);
+      if (error) throw error;
+      await fetchData();
+    } catch (error) {
+      console.error('Error deleting customer:', error);
       throw error;
     }
   };
@@ -321,6 +434,27 @@ export function useGarageStore() {
         .eq('id', ticketId);
 
       if (error) throw error;
+
+      // 3. Sincronizar datos actualizados del ticket con el cliente
+      if (dbUpdates.owner_name && dbUpdates.owner_phone) {
+        const { data: customer } = await supabaseGarage.from('customers')
+          .select('id')
+          .or(`phone.eq.${dbUpdates.owner_phone},name.eq.${dbUpdates.owner_name}`)
+          .maybeSingle();
+        
+        if (customer) {
+          await supabaseGarage.from('customers')
+            .update({
+              last_mileage: dbUpdates.mileage,
+              last_vin: dbUpdates.vin,
+              last_engine_id: dbUpdates.engine_id,
+              last_model: dbUpdates.model,
+              last_visit: new Date().toISOString()
+            })
+            .eq('id', customer.id);
+        }
+      }
+
       await fetchData();
     } catch (error) {
       console.error('Error updating ticket:', error);
@@ -396,18 +530,19 @@ export function useGarageStore() {
     updatePart,
     addCustomer,
     updateCustomer,
+    deleteCustomer,
     updateSettings,
     updateTicket,
+    deleteTicket,
     addReminder,
     updateReminder,
     deleteReminder,
     markNotificationAsRead,
     acceptQuotation: async (id: string, ticketModel: string) => {
       await updateTicket(id, {
-        quotation_accepted: true,
-        status: 'En Reparación',
-        last_status_change: new Date().toISOString()
+        quotation_accepted: true
       });
+      await updateTicketStatus(id, 'En Reparación', 'Gestión de Cotización (Auto)');
       // Insert notification
       await supabaseGarage.from('notifications').insert([{
         ticket_id: id,
@@ -419,7 +554,7 @@ export function useGarageStore() {
     clearFinishedTickets: async () => {
       try {
         const { error } = await supabaseGarage.from('tickets')
-          .delete()
+          .update({ status: 'Entregado', close_date: new Date().toISOString() })
           .eq('status', 'Finalizado');
         if (error) throw error;
         await fetchData();

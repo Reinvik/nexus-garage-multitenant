@@ -44,6 +44,8 @@ export function Agenda({ tickets, mechanics, customers }: AgendaProps) {
     const [searchTerm, setSearchTerm] = useState('');
     const [selectedDate, setSelectedDate] = useState(new Date());
     const [currentMonth, setCurrentMonth] = useState(new Date());
+    const [formDate, setFormDate] = useState(format(new Date(), 'yyyy-MM-dd'));
+    const [formTime, setFormTime] = useState('');
 
     const [newReminder, setNewReminder] = useState<Partial<Reminder>>({
         reminder_type: 'Mantención General',
@@ -61,6 +63,13 @@ export function Agenda({ tickets, mechanics, customers }: AgendaProps) {
     const dailyReminders = reminders.filter(r =>
         isSameDay(parseISO(r.planned_date), selectedDate)
     );
+
+    const vehicleModels = useMemo(() => {
+        const models = new Set<string>();
+        tickets.forEach(t => t.model && models.add(t.model));
+        customers.forEach(c => c.last_model && models.add(c.last_model));
+        return Array.from(models).sort();
+    }, [tickets, customers]);
 
     const hasReminder = (date: Date) => {
         return reminders.some(r => isSameDay(parseISO(r.planned_date), date));
@@ -84,7 +93,7 @@ export function Agenda({ tickets, mechanics, customers }: AgendaProps) {
             customer_name: customer.name,
             customer_phone: customer.phone,
             patente: customer.vehicles?.[0] || '',
-            vehicle_model: ''
+            vehicle_model: customer.last_model || ''
         });
         setSearchTerm('');
     };
@@ -92,8 +101,15 @@ export function Agenda({ tickets, mechanics, customers }: AgendaProps) {
     const handleAdd = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!newReminder.customer_name || !newReminder.patente) return;
-        await addReminder(newReminder);
+        
+        let finalDate = new Date(formDate + 'T00:00:00'); 
+        if (formTime) {
+           finalDate = new Date(`${formDate}T${formTime}:00`);
+        }
+
+        await addReminder({ ...newReminder, planned_date: finalDate.toISOString() });
         setIsAddModalOpen(false);
+        setFormTime('');
         setNewReminder({
             reminder_type: 'Mantención General',
             planned_date: selectedDate.toISOString(),
@@ -117,6 +133,8 @@ export function Agenda({ tickets, mechanics, customers }: AgendaProps) {
                 </div>
                 <button
                     onClick={() => {
+                        setFormDate(format(selectedDate, 'yyyy-MM-dd'));
+                        setFormTime('');
                         setNewReminder(prev => ({ ...prev, planned_date: selectedDate.toISOString() }));
                         setIsAddModalOpen(true);
                     }}
@@ -251,6 +269,8 @@ export function Agenda({ tickets, mechanics, customers }: AgendaProps) {
                                 <p className="text-zinc-500 font-bold text-sm">Sin actividades programadas</p>
                                 <button
                                     onClick={() => {
+                                        setFormDate(format(selectedDate, 'yyyy-MM-dd'));
+                                        setFormTime('');
                                         setNewReminder(prev => ({ ...prev, planned_date: selectedDate.toISOString() }));
                                         setIsAddModalOpen(true);
                                     }}
@@ -260,17 +280,22 @@ export function Agenda({ tickets, mechanics, customers }: AgendaProps) {
                                 </button>
                             </div>
                         ) : (
-                            dailyReminders.map((r) => (
+                            dailyReminders.map((r) => {
+                                const rDate = parseISO(r.planned_date);
+                                const timeFormat = format(rDate, 'HH:mm');
+                                const hasTime = timeFormat !== '00:00';
+
+                                return (
                                 <div key={r.id} className={cn(
                                     "bg-white p-5 rounded-3xl shadow-sm border transition-all relative group",
                                     r.completed ? "border-zinc-100 opacity-60" : "border-zinc-200 hover:border-emerald-500 active:scale-[0.98]"
                                 )}>
                                     <div className="flex justify-between items-start mb-4">
                                         <div className={cn(
-                                            "px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider",
+                                            "px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider flex items-center gap-1.5",
                                             r.completed ? "bg-zinc-100 text-zinc-500" : "bg-emerald-100 text-emerald-700"
                                         )}>
-                                            {r.reminder_type}
+                                            {r.reminder_type} {hasTime && <><Clock className="w-3 h-3 ml-1" /> {timeFormat}</>}
                                         </div>
                                         <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                                             <button
@@ -318,7 +343,7 @@ export function Agenda({ tickets, mechanics, customers }: AgendaProps) {
                                         )}
                                     </div>
                                 </div>
-                            ))
+                            )})
                         )}
                     </div>
                 </div>
@@ -329,8 +354,8 @@ export function Agenda({ tickets, mechanics, customers }: AgendaProps) {
                 <div className="fixed inset-0 bg-zinc-900/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
                     <div className="bg-white rounded-2xl shadow-xl w-full max-w-md p-6 space-y-6 overflow-visible">
                         <div className="flex justify-between items-center">
-                            <h3 className="text-xl font-bold text-zinc-900 uppercase tracking-tight">Programar Mantención</h3>
-                            <button onClick={() => setIsAddModalOpen(false)} className="p-2 text-zinc-400 hover:text-zinc-600 rounded-full hover:bg-zinc-100 transition-colors">
+                            <h3 className="text-xl font-bold text-zinc-900 uppercase tracking-tight">Agendar Actividad</h3>
+                            <button type="button" onClick={() => setIsAddModalOpen(false)} className="p-2 text-zinc-400 hover:text-zinc-600 rounded-full hover:bg-zinc-100 transition-colors">
                                 <Plus className="w-5 h-5 rotate-45" />
                             </button>
                         </div>
@@ -416,11 +441,17 @@ export function Agenda({ tickets, mechanics, customers }: AgendaProps) {
                                 <input
                                     required
                                     type="text"
+                                    list="vehicle-models"
                                     placeholder="Marca y Modelo"
                                     className="w-full px-4 py-2.5 rounded-xl border border-zinc-200 outline-none focus:border-zinc-900 transition-all shadow-sm"
                                     value={newReminder.vehicle_model || ''}
                                     onChange={e => setNewReminder({ ...newReminder, vehicle_model: e.target.value })}
                                 />
+                                <datalist id="vehicle-models">
+                                    {vehicleModels.map(m => (
+                                        <option key={m} value={m} />
+                                    ))}
+                                </datalist>
                             </div>
                             <div className="grid grid-cols-2 gap-4">
                                 <div className="space-y-2">
@@ -439,13 +470,22 @@ export function Agenda({ tickets, mechanics, customers }: AgendaProps) {
                                     </select>
                                 </div>
                                 <div className="space-y-2">
-                                    <label className="text-xs font-black text-zinc-400 uppercase tracking-widest">Fecha Programada</label>
+                                    <label className="text-xs font-black text-zinc-400 uppercase tracking-widest">Fecha</label>
                                     <input
                                         required
                                         type="date"
                                         className="w-full px-4 py-2.5 rounded-xl border border-zinc-200 outline-none focus:border-emerald-500 transition-all shadow-sm font-mono"
-                                        value={newReminder.planned_date?.split('T')[0] || ''}
-                                        onChange={e => setNewReminder({ ...newReminder, planned_date: new Date(e.target.value).toISOString() })}
+                                        value={formDate}
+                                        onChange={e => setFormDate(e.target.value)}
+                                    />
+                                </div>
+                                <div className="space-y-2">
+                                    <label className="text-xs font-black text-zinc-400 uppercase tracking-widest">Hora (Opcional)</label>
+                                    <input
+                                        type="time"
+                                        className="w-full px-4 py-2.5 rounded-xl border border-zinc-200 outline-none focus:border-emerald-500 transition-all shadow-sm font-mono"
+                                        value={formTime}
+                                        onChange={e => setFormTime(e.target.value)}
                                     />
                                 </div>
                             </div>

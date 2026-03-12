@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { GarageSettings } from '../types';
-import { Save, Building2, MapPin, Phone, MessageSquare, Loader2, CheckCircle } from 'lucide-react';
+import { Save, Building2, MapPin, Phone, MessageSquare, Loader2, CheckCircle, Palette } from 'lucide-react';
+import { cn } from '../lib/utils';
 
 interface SettingsFormProps {
     settings: GarageSettings | null;
@@ -8,15 +9,21 @@ interface SettingsFormProps {
 }
 
 export function SettingsForm({ settings, onUpdate }: SettingsFormProps) {
-    const [formData, setFormData] = useState({
+    const [formData, setFormData] = useState<Partial<GarageSettings>>({
         workshop_name: '',
         address: '',
         phone: '',
         whatsapp_template: '',
-        logo_url: ''
+        logo_url: '',
+        logo_scale: 1,
+        logo_x_offset: 50,
+        logo_y_offset: 50,
+        theme_menu_text: '#a1a1aa',
+        theme_menu_highlight: '#10b981'
     });
     const [loading, setLoading] = useState(false);
     const [saved, setSaved] = useState(false);
+    const [activeTab, setActiveTab] = useState<'general' | 'design'>('general');
 
     useEffect(() => {
         if (settings) {
@@ -25,7 +32,12 @@ export function SettingsForm({ settings, onUpdate }: SettingsFormProps) {
                 address: settings.address || '',
                 phone: settings.phone || '',
                 whatsapp_template: settings.whatsapp_template || '',
-                logo_url: settings.logo_url || ''
+                logo_url: settings.logo_url || '',
+                logo_scale: settings.logo_scale ?? 1,
+                logo_x_offset: settings.logo_x_offset ?? 50,
+                logo_y_offset: settings.logo_y_offset ?? 50,
+                theme_menu_text: settings.theme_menu_text || '#a1a1aa',
+                theme_menu_highlight: settings.theme_menu_highlight || '#10b981'
             });
         }
     }, [settings]);
@@ -51,9 +63,25 @@ export function SettingsForm({ settings, onUpdate }: SettingsFormProps) {
                     Configuración del Taller
                 </h2>
                 <p className="text-zinc-500 text-sm mt-1">Personaliza la información de tu taller y las comunicaciones con los clientes.</p>
+                <div className="flex gap-2 mt-6">
+                    <button 
+                        type="button"
+                        onClick={() => setActiveTab('general')}
+                        className={cn("px-4 py-2 rounded-xl border font-bold text-sm transition-all", activeTab === 'general' ? "bg-zinc-900 border-zinc-900 text-white" : "bg-white border-zinc-200 text-zinc-500 hover:border-zinc-300")}
+                    >General</button>
+                    <button 
+                        type="button"
+                        onClick={() => setActiveTab('design')}
+                        className={cn("flex items-center gap-2 px-4 py-2 rounded-xl border font-bold text-sm transition-all", activeTab === 'design' ? "bg-zinc-900 border-zinc-900 text-white" : "bg-white border-zinc-200 text-zinc-500 hover:border-zinc-300")}
+                    >
+                        <Palette className="w-4 h-4" /> Diseño
+                    </button>
+                </div>
             </div>
 
             <form onSubmit={handleSubmit} className="p-8 space-y-8 max-w-2xl">
+                {activeTab === 'general' ? (
+                <>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div className="space-y-2">
                         <label className="text-sm font-semibold text-zinc-700 flex items-center gap-2">
@@ -98,6 +126,75 @@ export function SettingsForm({ settings, onUpdate }: SettingsFormProps) {
                         />
                     </div>
 
+                    {/* Controles de Logo */}
+                    {formData.logo_url && (
+                        <div className="md:col-span-2 space-y-4 p-4 bg-zinc-50 border border-zinc-200 rounded-2xl mt-2">
+                            <h3 className="text-sm font-bold text-zinc-900 border-b border-zinc-200 pb-2">Ajuste de Logo</h3>
+                            <div className="flex flex-col md:flex-row gap-8 items-center">
+                                {/* Preview */}
+                                <div className="flex-shrink-0 flex flex-col items-center gap-2">
+                                    <span className="text-xs font-bold text-zinc-400 uppercase tracking-widest">Previsualización</span>
+                                    <div className="w-20 h-20 rounded-xl overflow-hidden border-2 border-zinc-300 bg-white shadow-sm flex items-center justify-center p-1 relative">
+                                        <img 
+                                            src={formData.logo_url} 
+                                            alt="Preview" 
+                                            className="w-full h-full"
+                                            style={{
+                                                objectFit: 'cover',
+                                                objectPosition: `${formData.logo_x_offset}% ${formData.logo_y_offset}%`,
+                                                transformOrigin: `${formData.logo_x_offset}% ${formData.logo_y_offset}%`,
+                                                transform: `scale(${formData.logo_scale})`
+                                            }}
+                                            onError={(e) => {
+                                                (e.target as HTMLImageElement).style.display = 'none';
+                                            }}
+                                        />
+                                    </div>
+                                </div>
+                                
+                                {/* Sliders */}
+                                <div className="flex-1 space-y-4 w-full">
+                                    <div className="space-y-1">
+                                        <div className="flex justify-between">
+                                            <label className="text-xs font-semibold text-zinc-600">Zoom (Tamaño)</label>
+                                            <span className="text-xs font-mono text-emerald-600 bg-emerald-50 px-1 rounded">{formData.logo_scale}x</span>
+                                        </div>
+                                        <input 
+                                            type="range" min="0.5" max="3" step="0.1"
+                                            value={formData.logo_scale}
+                                            onChange={e => setFormData({ ...formData, logo_scale: parseFloat(e.target.value) })}
+                                            className="w-full accent-emerald-500"
+                                        />
+                                    </div>
+                                    <div className="space-y-1">
+                                        <div className="flex justify-between">
+                                            <label className="text-xs font-semibold text-zinc-600">Ajuste Horizontal</label>
+                                            <span className="text-xs font-mono text-zinc-500 bg-zinc-100 px-1 rounded">{formData.logo_x_offset}%</span>
+                                        </div>
+                                        <input 
+                                            type="range" min="0" max="100" step="1"
+                                            value={formData.logo_x_offset}
+                                            onChange={e => setFormData({ ...formData, logo_x_offset: parseInt(e.target.value) })}
+                                            className="w-full accent-emerald-500"
+                                        />
+                                    </div>
+                                    <div className="space-y-1">
+                                        <div className="flex justify-between">
+                                            <label className="text-xs font-semibold text-zinc-600">Ajuste Vertical</label>
+                                            <span className="text-xs font-mono text-zinc-500 bg-zinc-100 px-1 rounded">{formData.logo_y_offset}%</span>
+                                        </div>
+                                        <input 
+                                            type="range" min="0" max="100" step="1"
+                                            value={formData.logo_y_offset}
+                                            onChange={e => setFormData({ ...formData, logo_y_offset: parseInt(e.target.value) })}
+                                            className="w-full accent-emerald-500"
+                                        />
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
                     <div className="md:col-span-2 space-y-2">
                         <label className="text-sm font-semibold text-zinc-700 flex items-center gap-2">
                             <MapPin className="w-4 h-4 text-zinc-400" />
@@ -136,6 +233,43 @@ export function SettingsForm({ settings, onUpdate }: SettingsFormProps) {
                         </div>
                     </div>
                 </div>
+
+                </>
+                ) : (
+                <div className="space-y-6">
+                     <p className="text-sm text-zinc-600 mb-6">Personaliza los colores de la barra lateral para que coincidan con la identidad corporativa de tu marca.</p>
+                     
+                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div className="space-y-3 p-5 rounded-2xl border border-zinc-200 bg-zinc-50">
+                            <label className="text-sm font-semibold text-zinc-900 block">Color de Texto del Menú</label>
+                            <p className="text-xs text-zinc-500 pb-2">El color de los enlaces cuando no están seleccionados.</p>
+                            <div className="flex items-center gap-4">
+                                <input 
+                                    type="color" 
+                                    value={formData.theme_menu_text || '#a1a1aa'} 
+                                    onChange={e => setFormData({ ...formData, theme_menu_text: e.target.value })}
+                                    className="w-12 h-12 rounded bg-transparent cursor-pointer"
+                                />
+                                <span className="font-mono text-zinc-600 text-sm uppercase bg-white border border-zinc-200 px-3 py-1.5 rounded-lg">{formData.theme_menu_text || '#a1a1aa'}</span>
+                            </div>
+                        </div>
+
+                        <div className="space-y-3 p-5 rounded-2xl border border-zinc-200 bg-zinc-50">
+                            <label className="text-sm font-semibold text-zinc-900 block">Color de Destacado (Highlight)</label>
+                            <p className="text-xs text-zinc-500 pb-2">El color del texto y resaltado de la página seleccionada.</p>
+                            <div className="flex items-center gap-4">
+                                <input 
+                                    type="color" 
+                                    value={formData.theme_menu_highlight || '#10b981'} 
+                                    onChange={e => setFormData({ ...formData, theme_menu_highlight: e.target.value })}
+                                    className="w-12 h-12 rounded bg-transparent cursor-pointer"
+                                />
+                                <span className="font-mono text-zinc-600 text-sm uppercase bg-white border border-zinc-200 px-3 py-1.5 rounded-lg">{formData.theme_menu_highlight || '#10b981'}</span>
+                            </div>
+                        </div>
+                     </div>
+                </div>
+                )}
 
                 <div className="pt-6 flex items-center justify-between border-t border-zinc-100">
                     {saved && (

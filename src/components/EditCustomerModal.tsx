@@ -7,13 +7,18 @@ interface EditCustomerModalProps {
     onClose: () => void;
     customer: Customer | null;
     onUpdate: (id: string, updates: Partial<Customer>) => Promise<void>;
+    suggestedModels?: string[];
 }
 
-export function EditCustomerModal({ isOpen, onClose, customer, onUpdate }: EditCustomerModalProps) {
+export function EditCustomerModal({ isOpen, onClose, customer, onUpdate, suggestedModels = [] }: EditCustomerModalProps) {
     const [formData, setFormData] = useState({
         name: '',
         phone: '',
-        email: ''
+        email: '',
+        last_mileage: 0,
+        last_vin: '',
+        last_model: '',
+        last_engine_id: ''
     });
     const [loading, setLoading] = useState(false);
 
@@ -22,7 +27,11 @@ export function EditCustomerModal({ isOpen, onClose, customer, onUpdate }: EditC
             setFormData({
                 name: customer.name,
                 phone: customer.phone,
-                email: customer.email || ''
+                email: customer.email || '',
+                last_mileage: customer.last_mileage || 0,
+                last_vin: customer.last_vin || '',
+                last_model: customer.last_model || '',
+                last_engine_id: customer.last_engine_id || ''
             });
         }
     }, [customer]);
@@ -93,6 +102,56 @@ export function EditCustomerModal({ isOpen, onClose, customer, onUpdate }: EditC
                             className="w-full px-4 py-2.5 rounded-xl border border-zinc-200 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 outline-none transition-all text-zinc-800"
                             value={formData.email}
                             onChange={e => setFormData({ ...formData, email: e.target.value })}
+                        />
+                    </div>
+
+                    <div className="space-y-2">
+                        <label className="text-sm font-semibold text-zinc-700 flex items-center gap-2">
+                            Marca y Modelo Principal
+                        </label>
+                        <input
+                            type="text"
+                            list="edit-customer-vehicle-models"
+                            placeholder="Ej: Toyota Hilux"
+                            className="w-full px-4 py-2.5 rounded-xl border border-zinc-200 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 outline-none transition-all text-zinc-800 font-bold"
+                            value={formData.last_model}
+                            onChange={e => setFormData({ ...formData, last_model: e.target.value })}
+                        />
+                        <datalist id="edit-customer-vehicle-models">
+                            {suggestedModels.map(m => (
+                                <option key={m} value={m} />
+                            ))}
+                        </datalist>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                            <label className="text-sm font-semibold text-zinc-700">N° Motor</label>
+                            <input
+                                type="text"
+                                className="w-full px-4 py-2.5 rounded-xl border border-zinc-200 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 outline-none transition-all text-zinc-800 font-mono uppercase"
+                                value={formData.last_engine_id}
+                                onChange={e => setFormData({ ...formData, last_engine_id: e.target.value.toUpperCase() })}
+                            />
+                        </div>
+                        <div className="space-y-2">
+                            <label className="text-sm font-semibold text-zinc-700">VIN / Chasis</label>
+                            <input
+                                type="text"
+                                className="w-full px-4 py-2.5 rounded-xl border border-zinc-200 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 outline-none transition-all text-zinc-800 font-mono uppercase"
+                                value={formData.last_vin}
+                                onChange={e => setFormData({ ...formData, last_vin: e.target.value.toUpperCase() })}
+                            />
+                        </div>
+                    </div>
+
+                    <div className="space-y-2">
+                        <label className="text-sm font-semibold text-zinc-700">Kilometraje (KM)</label>
+                        <input
+                            type="number"
+                            className="w-full px-4 py-2.5 rounded-xl border border-zinc-200 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 outline-none transition-all text-zinc-800"
+                            value={formData.last_mileage || ''}
+                            onChange={e => setFormData({ ...formData, last_mileage: parseInt(e.target.value) || 0 })}
                         />
                     </div>
 

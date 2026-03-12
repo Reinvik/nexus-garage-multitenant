@@ -3,7 +3,22 @@ export type TicketStatus =
   | 'En Espera'
   | 'En Reparación'
   | 'Listo para Entrega'
-  | 'Finalizado';
+  | 'Finalizado'
+  | 'Entregado'; // Estado oculto para CRM
+
+export interface TicketHistoryEntry {
+  status: TicketStatus;
+  date: string; // ISO string
+  user: string;
+}
+
+export interface ServiceLogEntry {
+  date: string; // ISO de cuando se despachó o ingresó
+  notes: string;
+  parts: string[];
+  cost?: number;
+  mileage?: number;
+}
 
 export interface Ticket {
   id: string; // Patente
@@ -25,6 +40,9 @@ export interface Ticket {
   vin?: string;
   engine_id?: string;
   mileage?: number;
+  status_history?: TicketHistoryEntry[];
+  service_log?: ServiceLogEntry[];
+  vehicle_notes?: string;
 }
 
 export interface Mechanic {
@@ -48,6 +66,10 @@ export interface Customer {
   email: string;
   vehicles: string[]; // Array of Patentes
   last_visit: string; // ISO string
+  last_mileage?: number;
+  last_vin?: string;
+  last_engine_id?: string;
+  last_model?: string;
 }
 
 export interface Reminder {
@@ -77,4 +99,9 @@ export interface GarageSettings {
   phone: string;
   whatsapp_template: string;
   logo_url?: string;
+  logo_scale?: number;
+  logo_x_offset?: number;
+  logo_y_offset?: number;
+  theme_menu_text?: string;
+  theme_menu_highlight?: string;
 }

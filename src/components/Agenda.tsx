@@ -1,0 +1,464 @@
+import React, { useState, useMemo } from 'react';
+import { Ticket, Mechanic, Reminder, Customer } from '../types';
+import {
+    Calendar as CalendarIcon,
+    Clock,
+    Plus,
+    Trash2,
+    Send,
+    CheckCircle2,
+    User,
+    Car,
+    Search,
+    ChevronLeft,
+    ChevronRight,
+    CalendarDays
+} from 'lucide-react';
+import {
+    format,
+    startOfMonth,
+    endOfMonth,
+    startOfWeek,
+    endOfWeek,
+    eachDayOfInterval,
+    isSameMonth,
+    isSameDay,
+    addMonths,
+    subMonths,
+    parseISO
+} from 'date-fns';
+import { es } from 'date-fns/locale';
+import { cn } from '../lib/utils';
+import { useGarageStore } from '../hooks/useGarageStore';
+import { isChileanHoliday, getChileanHoliday } from '../lib/chileanHolidays';
+
+interface AgendaProps {
+    tickets: Ticket[];
+    mechanics: Mechanic[];
+    customers: Customer[];
+}
+
+export function Agenda({ tickets, mechanics, customers }: AgendaProps) {
+    const { reminders, addReminder, updateReminder, deleteReminder, settings } = useGarageStore();
+    const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+    const [searchTerm, setSearchTerm] = useState('');
+    const [selectedDate, setSelectedDate] = useState(new Date());
+    const [currentMonth, setCurrentMonth] = useState(new Date());
+
+    const [newReminder, setNewReminder] = useState<Partial<Reminder>>({
+        reminder_type: 'Mantención General',
+        planned_date: new Date().toISOString(),
+        completed: false
+    });
+
+    // Lógica de Calendario
+    const days = useMemo(() => {
+        const start = startOfWeek(startOfMonth(currentMonth), { weekStartsOn: 1 });
+        const end = endOfWeek(endOfMonth(currentMonth), { weekStartsOn: 1 });
+        return eachDayOfInterval({ start, end });
+    }, [currentMonth]);
+
+    const dailyReminders = reminders.filter(r =>
+        isSameDay(parseISO(r.planned_date), selectedDate)
+    );
+
+    const hasReminder = (date: Date) => {
+        return reminders.some(r => isSameDay(parseISO(r.planned_date), date));
+    };
+
+    const hasPendingReminder = (date: Date) => {
+        return reminders.some(r => isSameDay(parseISO(r.planned_date), date) && !r.completed);
+    };
+
+    const filteredCustomers = searchTerm.length >= 2
+        ? customers.filter(c =>
+            c.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            c.phone.includes(searchTerm) ||
+            c.vehicles.some(v => v.toLowerCase().includes(searchTerm.toLowerCase()))
+        )
+        : [];
+
+    const handleSelectCustomer = (customer: Customer) => {
+        setNewReminder({
+            ...newReminder,
+            customer_name: customer.name,
+            customer_phone: customer.phone,
+            patente: customer.vehicles?.[0] || '',
+            vehicle_model: ''
+        });
+        setSearchTerm('');
+    };
+
+    const handleAdd = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!newReminder.customer_name || !newReminder.patente) return;
+        await addReminder(newReminder);
+        setIsAddModalOpen(false);
+        setNewReminder({
+            reminder_type: 'Mantención General',
+            planned_date: selectedDate.toISOString(),
+            completed: false
+        });
+    };
+
+    const sendWhatsApp = (reminder: Reminder) => {
+        const message = `Hola ${reminder.customer_name}, te escribimos de ${settings?.workshop_name || 'tu taller'} para recordarte que tienes programada una ${reminder.reminder_type} para tu vehículo ${reminder.vehicle_model} (${reminder.patente}) el día ${format(new Date(reminder.planned_date), 'dd/MM/yy')}.`;
+        window.open(`https://wa.me/${reminder.customer_phone}?text=${encodeURIComponent(message)}`, '_blank');
+    };
+
+    const weekDays = ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'];
+
+    return (
+        <div className="space-y-6 font-sans pb-10">
+            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-2">
+                <div>
+                    <h2 className="text-2xl font-bold tracking-tight text-zinc-900">Agenda de Mantenciones</h2>
+                    <p className="text-sm text-zinc-500 mt-0.5">Gestión de citas y preventivas.</p>
+                </div>
+                <button
+                    onClick={() => {
+                        setNewReminder(prev => ({ ...prev, planned_date: selectedDate.toISOString() }));
+                        setIsAddModalOpen(true);
+                    }}
+                    className="w-full md:w-auto flex items-center justify-center gap-2 px-6 py-3 bg-zinc-900 hover:bg-black text-white rounded-2xl font-bold transition-all shadow-lg shadow-zinc-200 active:scale-95"
+                >
+                    <Plus className="w-5 h-5" />
+                    Agendar Cita
+                </button>
+            </div>
+
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+                {/* Calendario (Izquierda/Arriba) */}
+                <div className="lg:col-span-7 space-y-4">
+                    <div className="bg-white rounded-3xl shadow-sm border border-zinc-100 overflow-hidden">
+                        {/* Header Calendario */}
+                        <div className="flex items-center justify-between p-6 border-b border-zinc-50 bg-zinc-50/30">
+                            <h3 className="text-lg font-black text-zinc-900 uppercase tracking-tight">
+                                {format(currentMonth, 'MMMM yyyy', { locale: es })}
+                            </h3>
+                            <div className="flex gap-2">
+                                <button
+                                    onClick={() => setCurrentMonth(subMonths(currentMonth, 1))}
+                                    className="p-2 hover:bg-white border-transparent hover:border-zinc-200 border rounded-xl transition-all"
+                                >
+                                    <ChevronLeft className="w-5 h-5 text-zinc-600" />
+                                </button>
+                                <button
+                                    onClick={() => setCurrentMonth(addMonths(currentMonth, 1))}
+                                    className="p-2 hover:bg-white border-transparent hover:border-zinc-200 border rounded-xl transition-all"
+                                >
+                                    <ChevronRight className="w-5 h-5 text-zinc-600" />
+                                </button>
+                            </div>
+                        </div>
+
+                        {/* Grilla Calendario */}
+                        <div className="p-4 md:p-6">
+                            <div className="grid grid-cols-7 mb-4">
+                                {weekDays.map(day => (
+                                    <div key={day} className="text-center text-[10px] font-black text-zinc-400 uppercase tracking-widest py-2">
+                                        {day}
+                                    </div>
+                                ))}
+                            </div>
+                            <div className="grid grid-cols-7 gap-1 md:gap-2">
+                                {days.map((day, idx) => {
+                                    const isSelected = isSameDay(day, selectedDate);
+                                    const isToday = isSameDay(day, new Date());
+                                    const isCurrentMonth = isSameMonth(day, currentMonth);
+                                    const hasEvent = hasReminder(day);
+                                    const hasPending = hasPendingReminder(day);
+                                    const holiday = getChileanHoliday(day);
+                                    const isHoliday = !!holiday;
+
+                                    return (
+                                        <button
+                                            key={idx}
+                                            onClick={() => setSelectedDate(day)}
+                                            title={isHoliday ? holiday.name : undefined}
+                                            className={cn(
+                                                "relative aspect-square md:aspect-auto md:h-24 p-2 rounded-2xl transition-all flex flex-col items-center md:items-start group border",
+                                                isSelected
+                                                    ? "bg-zinc-900 border-zinc-900 text-white shadow-xl shadow-zinc-200 scale-105 z-10"
+                                                    : isToday
+                                                        ? "bg-emerald-50 border-emerald-200 text-emerald-700"
+                                                        : isCurrentMonth
+                                                            ? isHoliday
+                                                                ? "bg-red-50 border-red-100 text-red-600 hover:border-red-300"
+                                                                : "bg-white border-zinc-100 text-zinc-900 hover:border-zinc-300"
+                                                            : isHoliday
+                                                                ? "bg-red-50/30 border-transparent text-red-300"
+                                                                : "bg-zinc-50/50 border-transparent text-zinc-300"
+                                            )}
+                                        >
+                                            <span className={cn(
+                                                "text-sm md:text-base font-black truncate",
+                                                isSelected ? "text-white" : "text-inherit"
+                                            )}>
+                                                {format(day, 'd')}
+                                                {isHoliday && !isSelected && (
+                                                    <span className="ml-1 text-[8px] md:text-[10px] text-red-400 font-bold block md:inline uppercase tracking-tighter">
+                                                        Feriado
+                                                    </span>
+                                                )}
+                                            </span>
+
+                                            {/* Indicadores en Desktop */}
+                                            <div className="hidden md:flex flex-wrap gap-1 mt-auto">
+                                                {hasEvent && (
+                                                    <div className={cn(
+                                                        "w-1.5 h-1.5 rounded-full ring-2 ring-white/50",
+                                                        isSelected ? "bg-white" : hasPending ? "bg-emerald-500" : "bg-zinc-400"
+                                                    )}></div>
+                                                )}
+                                            </div>
+
+                                            {/* Indicador en Mobile (debajo del número) */}
+                                            {hasEvent && !isSelected && (
+                                                <div className={cn(
+                                                    "md:hidden absolute bottom-1.5 left-1/2 -translate-x-1/2 w-1 h-1 rounded-full",
+                                                    hasPending ? "bg-emerald-500" : "bg-zinc-300"
+                                                )}></div>
+                                            )}
+                                        </button>
+                                    );
+                                })}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                {/* Lista de Tarjetas (Derecha/Abajo) */}
+                <div className="lg:col-span-5 space-y-4">
+                    <div className="flex items-center justify-between px-2">
+                        <h3 className="text-sm font-black text-zinc-400 uppercase tracking-widest flex items-center gap-2">
+                            <CalendarDays className="w-4 h-4" />
+                            {isSameDay(selectedDate, new Date()) ? 'Pendientes hoy' : format(selectedDate, "d 'de' MMMM", { locale: es })}
+                        </h3>
+                        {dailyReminders.length > 0 && (
+                            <span className="px-2 py-0.5 bg-emerald-100 text-emerald-700 text-[10px] font-black rounded-full uppercase">
+                                {dailyReminders.length} {dailyReminders.length === 1 ? 'Cita' : 'Citas'}
+                            </span>
+                        )}
+                    </div>
+
+                    <div className="space-y-4 max-h-[600px] overflow-y-auto pr-2 custom-scrollbar">
+                        {dailyReminders.length === 0 ? (
+                            <div className="py-20 text-center bg-zinc-50/50 rounded-3xl border border-dashed border-zinc-200">
+                                <div className="w-16 h-16 bg-white rounded-2xl flex items-center justify-center mx-auto mb-4 border border-zinc-100 shadow-sm">
+                                    <Clock className="w-8 h-8 text-zinc-200" />
+                                </div>
+                                <p className="text-zinc-500 font-bold text-sm">Sin actividades programadas</p>
+                                <button
+                                    onClick={() => {
+                                        setNewReminder(prev => ({ ...prev, planned_date: selectedDate.toISOString() }));
+                                        setIsAddModalOpen(true);
+                                    }}
+                                    className="mt-4 text-xs font-black text-emerald-600 hover:text-emerald-700 uppercase tracking-wider"
+                                >
+                                    + Agendar para este día
+                                </button>
+                            </div>
+                        ) : (
+                            dailyReminders.map((r) => (
+                                <div key={r.id} className={cn(
+                                    "bg-white p-5 rounded-3xl shadow-sm border transition-all relative group",
+                                    r.completed ? "border-zinc-100 opacity-60" : "border-zinc-200 hover:border-emerald-500 active:scale-[0.98]"
+                                )}>
+                                    <div className="flex justify-between items-start mb-4">
+                                        <div className={cn(
+                                            "px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider",
+                                            r.completed ? "bg-zinc-100 text-zinc-500" : "bg-emerald-100 text-emerald-700"
+                                        )}>
+                                            {r.reminder_type}
+                                        </div>
+                                        <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                            <button
+                                                onClick={() => updateReminder(r.id, { completed: !r.completed })}
+                                                className={cn(
+                                                    "p-2 rounded-xl transition-all",
+                                                    r.completed ? "text-emerald-500 bg-emerald-50" : "text-zinc-400 hover:text-emerald-500 hover:bg-emerald-50"
+                                                )}
+                                            >
+                                                <CheckCircle2 className="w-5 h-5" />
+                                            </button>
+                                            <button
+                                                onClick={() => deleteReminder(r.id)}
+                                                className="p-2 text-zinc-400 hover:text-red-500 rounded-xl hover:bg-red-50 transition-all"
+                                            >
+                                                <Trash2 className="w-5 h-5" />
+                                            </button>
+                                        </div>
+                                    </div>
+
+                                    <div className="space-y-4">
+                                        <div>
+                                            <h4 className="font-black text-zinc-900 text-base">{r.customer_name}</h4>
+                                            <p className="text-[11px] text-zinc-500 font-medium">WhatsApp: {r.customer_phone}</p>
+                                        </div>
+
+                                        <div className="flex items-center gap-2 p-3 bg-zinc-50 rounded-2xl border border-zinc-100">
+                                            <div className="w-8 h-8 rounded-xl bg-white border border-zinc-100 flex items-center justify-center">
+                                                <Car className="w-4 h-4 text-zinc-400" />
+                                            </div>
+                                            <div className="flex flex-col">
+                                                <span className="text-xs font-bold text-zinc-900">{r.vehicle_model}</span>
+                                                <span className="text-[10px] font-mono font-black text-emerald-600 bg-emerald-50 px-1.5 py-0.5 rounded-md mt-0.5 uppercase">{r.patente}</span>
+                                            </div>
+                                        </div>
+
+                                        {!r.completed && (
+                                            <button
+                                                onClick={() => sendWhatsApp(r)}
+                                                className="w-full flex items-center justify-center gap-2 py-3 bg-emerald-500 hover:bg-emerald-600 text-white rounded-2xl font-black text-xs transition-all shadow-lg shadow-emerald-500/20"
+                                            >
+                                                <Send className="w-4 h-4" />
+                                                Enviar Aviso WhatsApp
+                                            </button>
+                                        )}
+                                    </div>
+                                </div>
+                            ))
+                        )}
+                    </div>
+                </div>
+            </div>
+
+            {/* Modal para añadir recordatorio */}
+            {isAddModalOpen && (
+                <div className="fixed inset-0 bg-zinc-900/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+                    <div className="bg-white rounded-2xl shadow-xl w-full max-w-md p-6 space-y-6 overflow-visible">
+                        <div className="flex justify-between items-center">
+                            <h3 className="text-xl font-bold text-zinc-900 uppercase tracking-tight">Programar Mantención</h3>
+                            <button onClick={() => setIsAddModalOpen(false)} className="p-2 text-zinc-400 hover:text-zinc-600 rounded-full hover:bg-zinc-100 transition-colors">
+                                <Plus className="w-5 h-5 rotate-45" />
+                            </button>
+                        </div>
+
+                        {/* Buscador de cliente existente */}
+                        <div className="relative">
+                            <label className="text-xs font-black text-zinc-400 uppercase tracking-widest mb-2 block">Buscar Cliente Registrado</label>
+                            <div className="relative">
+                                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-400" />
+                                <input
+                                    type="text"
+                                    placeholder="Nombre, teléfono o patente..."
+                                    className="w-full pl-10 pr-4 py-3 rounded-xl border border-zinc-200 outline-none focus:border-zinc-900 transition-all shadow-sm text-sm"
+                                    value={searchTerm}
+                                    onChange={e => setSearchTerm(e.target.value)}
+                                />
+                            </div>
+
+                            {filteredCustomers.length > 0 && (
+                                <div className="absolute top-full left-0 right-0 mt-2 bg-white rounded-xl shadow-2xl border border-zinc-100 z-[60] max-h-48 overflow-y-auto overflow-x-hidden">
+                                    {filteredCustomers.map(c => (
+                                        <button
+                                            key={c.id}
+                                            type="button"
+                                            onClick={() => handleSelectCustomer(c)}
+                                            className="w-full text-left px-4 py-3 hover:bg-emerald-50 transition-colors border-b border-zinc-50 last:border-0 flex flex-col"
+                                        >
+                                            <span className="font-bold text-zinc-900 text-sm">{c.name}</span>
+                                            <div className="flex items-center gap-2 mt-0.5">
+                                                <span className="text-[10px] text-zinc-500 font-medium">{c.phone}</span>
+                                                {c.vehicles.length > 0 && (
+                                                    <span className="text-[10px] bg-zinc-100 text-zinc-600 px-1.5 py-0.5 rounded font-mono font-bold border border-zinc-200">
+                                                        {c.vehicles[0]}
+                                                    </span>
+                                                )}
+                                            </div>
+                                        </button>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
+
+                        <div className="h-px bg-zinc-100 my-2"></div>
+
+                        <form onSubmit={handleAdd} className="space-y-4">
+                            <div className="space-y-2">
+                                <label className="text-xs font-black text-zinc-400 uppercase tracking-widest">Nombre Cliente</label>
+                                <input
+                                    required
+                                    type="text"
+                                    placeholder="Nombre del cliente"
+                                    className="w-full px-4 py-2.5 rounded-xl border border-zinc-200 outline-none focus:border-zinc-900 transition-all shadow-sm"
+                                    value={newReminder.customer_name || ''}
+                                    onChange={e => setNewReminder({ ...newReminder, customer_name: e.target.value })}
+                                />
+                            </div>
+                            <div className="grid grid-cols-2 gap-4">
+                                <div className="space-y-2">
+                                    <label className="text-xs font-black text-zinc-400 uppercase tracking-widest">Teléfono</label>
+                                    <input
+                                        required
+                                        type="tel"
+                                        placeholder="+569..."
+                                        className="w-full px-4 py-2.5 rounded-xl border border-zinc-200 outline-none focus:border-zinc-900 transition-all shadow-sm"
+                                        value={newReminder.customer_phone || ''}
+                                        onChange={e => setNewReminder({ ...newReminder, customer_phone: e.target.value })}
+                                    />
+                                </div>
+                                <div className="space-y-2">
+                                    <label className="text-xs font-black text-zinc-400 uppercase tracking-widest">Patente Vehículo</label>
+                                    <input
+                                        required
+                                        type="text"
+                                        placeholder="AA-BB-11"
+                                        className="w-full px-4 py-2.5 rounded-xl border border-zinc-200 outline-none focus:border-zinc-900 transition-all shadow-sm uppercase font-mono font-bold"
+                                        value={newReminder.patente || ''}
+                                        onChange={e => setNewReminder({ ...newReminder, patente: e.target.value.toUpperCase() })}
+                                    />
+                                </div>
+                            </div>
+                            <div className="space-y-2">
+                                <label className="text-xs font-black text-zinc-400 uppercase tracking-widest">Modelo Vehículo</label>
+                                <input
+                                    required
+                                    type="text"
+                                    placeholder="Marca y Modelo"
+                                    className="w-full px-4 py-2.5 rounded-xl border border-zinc-200 outline-none focus:border-zinc-900 transition-all shadow-sm"
+                                    value={newReminder.vehicle_model || ''}
+                                    onChange={e => setNewReminder({ ...newReminder, vehicle_model: e.target.value })}
+                                />
+                            </div>
+                            <div className="grid grid-cols-2 gap-4">
+                                <div className="space-y-2">
+                                    <label className="text-xs font-black text-zinc-400 uppercase tracking-widest">Tipo Recordatorio</label>
+                                    <select
+                                        className="w-full px-4 py-2.5 rounded-xl border border-zinc-200 outline-none focus:border-emerald-500 transition-all shadow-sm bg-white font-medium"
+                                        value={newReminder.reminder_type}
+                                        onChange={e => setNewReminder({ ...newReminder, reminder_type: e.target.value })}
+                                    >
+                                        <option>Mantención General</option>
+                                        <option>Cambio de Aceite</option>
+                                        <option>Mantención de Frenos</option>
+                                        <option>Revisión Suspensión</option>
+                                        <option>Escáner Electrónico</option>
+                                        <option>Revisión Técnica</option>
+                                    </select>
+                                </div>
+                                <div className="space-y-2">
+                                    <label className="text-xs font-black text-zinc-400 uppercase tracking-widest">Fecha Programada</label>
+                                    <input
+                                        required
+                                        type="date"
+                                        className="w-full px-4 py-2.5 rounded-xl border border-zinc-200 outline-none focus:border-emerald-500 transition-all shadow-sm font-mono"
+                                        value={newReminder.planned_date?.split('T')[0] || ''}
+                                        onChange={e => setNewReminder({ ...newReminder, planned_date: new Date(e.target.value).toISOString() })}
+                                    />
+                                </div>
+                            </div>
+                            <button
+                                type="submit"
+                                className="w-full py-3.5 bg-zinc-900 hover:bg-black text-white rounded-2xl font-black transition-all shadow-lg shadow-zinc-200 active:scale-95 uppercase tracking-widest mt-2"
+                            >
+                                Agendar Recordatorio
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            )}
+        </div>
+    );
+}

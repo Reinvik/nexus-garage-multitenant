@@ -86,7 +86,7 @@ export function Layout({ children, activeTab, setActiveTab, onLogout, notificati
                 />
               </div>
             ) : (
-              <div className="w-16 h-16 rounded-xl bg-emerald-500 flex items-center justify-center flex-shrink-0">
+              <div className="w-16 h-16 rounded-xl flex items-center justify-center flex-shrink-0" style={{ backgroundColor: menuHighlightColor }}>
                 <Wrench className="w-8 h-8 text-zinc-900" />
               </div>
             )}
@@ -172,7 +172,8 @@ export function Layout({ children, activeTab, setActiveTab, onLogout, notificati
             >
               <Bell className="w-5 h-5" />
               {unreadCount > 0 && (
-                <span className="absolute top-1.5 right-1.5 w-4 h-4 bg-red-500 text-white text-[10px] flex items-center justify-center rounded-full border-2 border-white font-bold">
+                <span className="absolute top-1.5 right-1.5 w-4 h-4 text-white text-[10px] flex items-center justify-center rounded-full border-2 border-white font-bold" 
+                      style={{ backgroundColor: menuHighlightColor }}>
                   {unreadCount}
                 </span>
               )}
@@ -183,7 +184,7 @@ export function Layout({ children, activeTab, setActiveTab, onLogout, notificati
                 <div className="p-4 border-b border-zinc-50 bg-zinc-50/50 flex justify-between items-center">
                   <h3 className="font-bold text-zinc-900 text-sm">Notificaciones</h3>
                   {unreadCount > 0 && (
-                    <span className="text-[10px] bg-red-100 text-red-600 px-2 py-0.5 rounded-full font-bold">
+                    <span className="text-[10px] px-2 py-0.5 rounded-full font-bold" style={{ backgroundColor: highlightBg, color: menuHighlightColor }}>
                       {unreadCount} nuevas
                     </span>
                   )}
@@ -200,8 +201,9 @@ export function Layout({ children, activeTab, setActiveTab, onLogout, notificati
                         key={n.id}
                         className={cn(
                           "p-4 border-b border-zinc-50 last:border-0 hover:bg-zinc-50 transition-colors cursor-pointer group",
-                          !n.read && "bg-emerald-50/30"
+                          !n.read && "relative"
                         )}
+                        style={{ backgroundColor: !n.read ? highlightBg : undefined }}
                         onClick={() => markAsRead(n.id)}
                       >
                         <div className="flex justify-between items-start gap-2">
@@ -209,7 +211,7 @@ export function Layout({ children, activeTab, setActiveTab, onLogout, notificati
                             {n.message}
                           </p>
                           {!n.read && (
-                            <div className="w-2 h-2 bg-emerald-500 rounded-full shrink-0 mt-1"></div>
+                            <div className="w-2 h-2 rounded-full shrink-0 mt-1" style={{ backgroundColor: menuHighlightColor }}></div>
                           )}
                         </div>
                         <span className="text-[10px] text-zinc-400 mt-2 block">

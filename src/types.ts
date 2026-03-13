@@ -104,4 +104,5 @@ export interface GarageSettings {
   logo_y_offset?: number;
   theme_menu_text?: string;
   theme_menu_highlight?: string;
+  company_slug?: string;
 }

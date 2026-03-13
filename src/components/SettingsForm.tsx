@@ -19,7 +19,8 @@ export function SettingsForm({ settings, onUpdate }: SettingsFormProps) {
         logo_x_offset: 50,
         logo_y_offset: 50,
         theme_menu_text: '#a1a1aa',
-        theme_menu_highlight: '#10b981'
+        theme_menu_highlight: '#10b981',
+        company_slug: ''
     });
     const [loading, setLoading] = useState(false);
     const [saved, setSaved] = useState(false);
@@ -37,7 +38,8 @@ export function SettingsForm({ settings, onUpdate }: SettingsFormProps) {
                 logo_x_offset: settings.logo_x_offset ?? 50,
                 logo_y_offset: settings.logo_y_offset ?? 50,
                 theme_menu_text: settings.theme_menu_text || '#a1a1aa',
-                theme_menu_highlight: settings.theme_menu_highlight || '#10b981'
+                theme_menu_highlight: settings.theme_menu_highlight || '#10b981',
+                company_slug: settings.company_slug || ''
             });
         }
     }, [settings]);
@@ -92,7 +94,11 @@ export function SettingsForm({ settings, onUpdate }: SettingsFormProps) {
                             required
                             type="text"
                             placeholder="Ej: Nexus Garage"
-                            className="w-full px-4 py-2.5 rounded-xl border border-zinc-200 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 outline-none transition-all text-zinc-800"
+                             className="w-full px-4 py-2.5 rounded-xl border border-zinc-200 outline-none transition-all text-zinc-800 focus:ring-2"
+                            style={{ 
+                                borderColor: formData.theme_menu_highlight && formData.theme_menu_highlight !== '#10b981' ? `${formData.theme_menu_highlight}40` : undefined,
+                                boxShadow: formData.theme_menu_highlight && formData.theme_menu_highlight !== '#10b981' ? `0 0 0 2px ${formData.theme_menu_highlight}20` : undefined
+                            }}
                             value={formData.workshop_name}
                             onChange={e => setFormData({ ...formData, workshop_name: e.target.value })}
                         />
@@ -106,7 +112,11 @@ export function SettingsForm({ settings, onUpdate }: SettingsFormProps) {
                         <input
                             type="text"
                             placeholder="+569 1234 5678"
-                            className="w-full px-4 py-2.5 rounded-xl border border-zinc-200 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 outline-none transition-all text-zinc-800 font-mono"
+                            className="w-full px-4 py-2.5 rounded-xl border border-zinc-200 outline-none transition-all text-zinc-800 font-mono focus:ring-2"
+                            style={{ 
+                                borderColor: formData.theme_menu_highlight && formData.theme_menu_highlight !== '#10b981' ? `${formData.theme_menu_highlight}40` : undefined,
+                                boxShadow: formData.theme_menu_highlight && formData.theme_menu_highlight !== '#10b981' ? `0 0 0 2px ${formData.theme_menu_highlight}20` : undefined
+                            }}
                             value={formData.phone}
                             onChange={e => setFormData({ ...formData, phone: e.target.value })}
                         />
@@ -120,7 +130,11 @@ export function SettingsForm({ settings, onUpdate }: SettingsFormProps) {
                         <input
                             type="text"
                             placeholder="https://ejemplo.com/mi-logo.png"
-                            className="w-full px-4 py-2.5 rounded-xl border border-zinc-200 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 outline-none transition-all text-zinc-800"
+                            className="w-full px-4 py-2.5 rounded-xl border border-zinc-200 outline-none transition-all text-zinc-800 focus:ring-2"
+                            style={{ 
+                                borderColor: formData.theme_menu_highlight && formData.theme_menu_highlight !== '#10b981' ? `${formData.theme_menu_highlight}40` : undefined,
+                                boxShadow: formData.theme_menu_highlight && formData.theme_menu_highlight !== '#10b981' ? `0 0 0 2px ${formData.theme_menu_highlight}20` : undefined
+                            }}
                             value={formData.logo_url}
                             onChange={e => setFormData({ ...formData, logo_url: e.target.value })}
                         />
@@ -156,39 +170,42 @@ export function SettingsForm({ settings, onUpdate }: SettingsFormProps) {
                                 <div className="flex-1 space-y-4 w-full">
                                     <div className="space-y-1">
                                         <div className="flex justify-between">
-                                            <label className="text-xs font-semibold text-zinc-600">Zoom (Tamaño)</label>
-                                            <span className="text-xs font-mono text-emerald-600 bg-emerald-50 px-1 rounded">{formData.logo_scale}x</span>
-                                        </div>
-                                        <input 
-                                            type="range" min="0.5" max="3" step="0.1"
-                                            value={formData.logo_scale}
-                                            onChange={e => setFormData({ ...formData, logo_scale: parseFloat(e.target.value) })}
-                                            className="w-full accent-emerald-500"
-                                        />
+                                             <label className="text-xs font-semibold text-zinc-600">Zoom (Tamaño)</label>
+                                             <span className="text-xs font-mono px-1 rounded" style={{ backgroundColor: `${formData.theme_menu_highlight}15`, color: formData.theme_menu_highlight }}>{formData.logo_scale}x</span>
+                                         </div>
+                                         <input 
+                                             type="range" min="0.5" max="3" step="0.1"
+                                             value={formData.logo_scale}
+                                             onChange={e => setFormData({ ...formData, logo_scale: parseFloat(e.target.value) })}
+                                             className="w-full"
+                                             style={{ accentColor: formData.theme_menu_highlight }}
+                                         />
                                     </div>
                                     <div className="space-y-1">
                                         <div className="flex justify-between">
-                                            <label className="text-xs font-semibold text-zinc-600">Ajuste Horizontal</label>
-                                            <span className="text-xs font-mono text-zinc-500 bg-zinc-100 px-1 rounded">{formData.logo_x_offset}%</span>
-                                        </div>
-                                        <input 
-                                            type="range" min="0" max="100" step="1"
-                                            value={formData.logo_x_offset}
-                                            onChange={e => setFormData({ ...formData, logo_x_offset: parseInt(e.target.value) })}
-                                            className="w-full accent-emerald-500"
-                                        />
+                                             <label className="text-xs font-semibold text-zinc-600">Ajuste Horizontal</label>
+                                             <span className="text-xs font-mono text-zinc-500 bg-zinc-100 px-1 rounded">{formData.logo_x_offset}%</span>
+                                         </div>
+                                         <input 
+                                             type="range" min="0" max="100" step="1"
+                                             value={formData.logo_x_offset}
+                                             onChange={e => setFormData({ ...formData, logo_x_offset: parseInt(e.target.value) })}
+                                             className="w-full"
+                                             style={{ accentColor: formData.theme_menu_highlight }}
+                                         />
                                     </div>
                                     <div className="space-y-1">
                                         <div className="flex justify-between">
-                                            <label className="text-xs font-semibold text-zinc-600">Ajuste Vertical</label>
-                                            <span className="text-xs font-mono text-zinc-500 bg-zinc-100 px-1 rounded">{formData.logo_y_offset}%</span>
-                                        </div>
-                                        <input 
-                                            type="range" min="0" max="100" step="1"
-                                            value={formData.logo_y_offset}
-                                            onChange={e => setFormData({ ...formData, logo_y_offset: parseInt(e.target.value) })}
-                                            className="w-full accent-emerald-500"
-                                        />
+                                             <label className="text-xs font-semibold text-zinc-600">Ajuste Vertical</label>
+                                             <span className="text-xs font-mono text-zinc-500 bg-zinc-100 px-1 rounded">{formData.logo_y_offset}%</span>
+                                         </div>
+                                         <input 
+                                             type="range" min="0" max="100" step="1"
+                                             value={formData.logo_y_offset}
+                                             onChange={e => setFormData({ ...formData, logo_y_offset: parseInt(e.target.value) })}
+                                             className="w-full"
+                                             style={{ accentColor: formData.theme_menu_highlight }}
+                                         />
                                     </div>
                                 </div>
                             </div>
@@ -203,7 +220,11 @@ export function SettingsForm({ settings, onUpdate }: SettingsFormProps) {
                         <input
                             type="text"
                             placeholder="Av. Principal #123, Ciudad"
-                            className="w-full px-4 py-2.5 rounded-xl border border-zinc-200 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 outline-none transition-all text-zinc-800"
+                            className="w-full px-4 py-2.5 rounded-xl border border-zinc-200 outline-none transition-all text-zinc-800 focus:ring-2"
+                            style={{ 
+                                borderColor: formData.theme_menu_highlight && formData.theme_menu_highlight !== '#10b981' ? `${formData.theme_menu_highlight}40` : undefined,
+                                boxShadow: formData.theme_menu_highlight && formData.theme_menu_highlight !== '#10b981' ? `0 0 0 2px ${formData.theme_menu_highlight}20` : undefined
+                            }}
                             value={formData.address}
                             onChange={e => setFormData({ ...formData, address: e.target.value })}
                         />
@@ -219,17 +240,21 @@ export function SettingsForm({ settings, onUpdate }: SettingsFormProps) {
                         <textarea
                             rows={3}
                             placeholder="Mensaje que se enviará a los clientes..."
-                            className="w-full px-4 py-2.5 rounded-xl border border-zinc-200 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 outline-none transition-all text-zinc-800 resize-none"
+                            className="w-full px-4 py-2.5 rounded-xl border border-zinc-200 outline-none transition-all text-zinc-800 resize-none focus:ring-2"
+                            style={{ 
+                                borderColor: formData.theme_menu_highlight && formData.theme_menu_highlight !== '#10b981' ? `${formData.theme_menu_highlight}40` : undefined,
+                                boxShadow: formData.theme_menu_highlight && formData.theme_menu_highlight !== '#10b981' ? `0 0 0 2px ${formData.theme_menu_highlight}20` : undefined
+                            }}
                             value={formData.whatsapp_template}
                             onChange={e => setFormData({ ...formData, whatsapp_template: e.target.value })}
                         />
                         <div className="flex gap-2 flex-wrap mt-2">
                             <span className="text-[10px] px-2 py-0.5 bg-zinc-100 text-zinc-500 rounded border border-zinc-200">Variables: </span>
-                            <code className="text-[10px] px-1.5 py-0.5 bg-zinc-100 text-emerald-600 rounded border border-zinc-200">{"{{cliente}}"}</code>
-                            <code className="text-[10px] px-1.5 py-0.5 bg-zinc-100 text-emerald-600 rounded border border-zinc-200">{"{{vehiculo}}"}</code>
-                            <code className="text-[10px] px-1.5 py-0.5 bg-zinc-100 text-emerald-600 rounded border border-zinc-200">{"{{estado}}"}</code>
-                            <code className="text-[10px] px-1.5 py-0.5 bg-zinc-100 text-emerald-600 rounded border border-zinc-200">{"{{nombre_taller}}"}</code>
-                            <code className="text-[10px] px-1.5 py-0.5 bg-zinc-100 text-emerald-600 rounded border border-zinc-200">{"{{telefono_taller}}"}</code>
+                            <code className="text-[10px] px-1.5 py-0.5 bg-zinc-100 rounded border border-zinc-200" style={{ color: formData.theme_menu_highlight }}>{"{{cliente}}"}</code>
+                            <code className="text-[10px] px-1.5 py-0.5 bg-zinc-100 rounded border border-zinc-200" style={{ color: formData.theme_menu_highlight }}>{"{{vehiculo}}"}</code>
+                            <code className="text-[10px] px-1.5 py-0.5 bg-zinc-100 rounded border border-zinc-200" style={{ color: formData.theme_menu_highlight }}>{"{{estado}}"}</code>
+                            <code className="text-[10px] px-1.5 py-0.5 bg-zinc-100 rounded border border-zinc-200" style={{ color: formData.theme_menu_highlight }}>{"{{nombre_taller}}"}</code>
+                            <code className="text-[10px] px-1.5 py-0.5 bg-zinc-100 rounded border border-zinc-200" style={{ color: formData.theme_menu_highlight }}>{"{{telefono_taller}}"}</code>
                         </div>
                     </div>
                 </div>
@@ -268,12 +293,50 @@ export function SettingsForm({ settings, onUpdate }: SettingsFormProps) {
                             </div>
                         </div>
                      </div>
+
+                     <div className="pt-6 border-t border-zinc-100 space-y-4">
+                        <div className="space-y-2">
+                            <label className="text-sm font-semibold text-zinc-900 block">Identificador de mi Taller (Slug)</label>
+                            <p className="text-xs text-zinc-500 pb-2">Este nombre se usará en tu URL personalizada. Ej: <code>nexusgarage.com?t=nombre-taller</code></p>
+                            <input
+                                type="text"
+                                placeholder="mi-taller"
+                                className="w-full px-4 py-2.5 rounded-xl border border-zinc-200 outline-none transition-all text-zinc-800 font-mono focus:ring-2"
+                                style={{ 
+                                    borderColor: formData.theme_menu_highlight && formData.theme_menu_highlight !== '#10b981' ? `${formData.theme_menu_highlight}40` : undefined,
+                                    boxShadow: formData.theme_menu_highlight && formData.theme_menu_highlight !== '#10b981' ? `0 0 0 2px ${formData.theme_menu_highlight}20` : undefined
+                                }}
+                                value={formData.company_slug}
+                                onChange={e => setFormData({ ...formData, company_slug: e.target.value.toLowerCase().replace(/\s+/g, '-') })}
+                            />
+                        </div>
+
+                        {formData.company_slug && (
+                        <div className="p-4 rounded-2xl" style={{ backgroundColor: `${formData.theme_menu_highlight}10`, border: `1px solid ${formData.theme_menu_highlight}20` }}>
+                                <label className="text-[10px] font-bold uppercase mb-1 block" style={{ color: formData.theme_menu_highlight }}>Tu Link de Login Personalizado</label>
+                                <div className="flex items-center justify-between gap-4">
+                                     <code className="text-xs break-all" style={{ color: formData.theme_menu_highlight }}>
+                                        {window.location.origin}/?t={formData.company_slug}
+                                    </code>
+                                    <button 
+                                        type="button"
+                                        onClick={() => {
+                                            navigator.clipboard.writeText(`${window.location.origin}/?t=${formData.company_slug}`);
+                                            alert('¡Enlace copiado!');
+                                        }}
+                                        className="text-xs font-bold transition-colors shrink-0"
+                                        style={{ color: formData.theme_menu_highlight }}
+                                    >Copiar Link</button>
+                                </div>
+                            </div>
+                        )}
+                     </div>
                 </div>
                 )}
 
                 <div className="pt-6 flex items-center justify-between border-t border-zinc-100">
                     {saved && (
-                        <span className="text-emerald-600 text-sm font-medium flex items-center gap-1.5 animate-in fade-in slide-in-from-left-2">
+                        <span className="text-sm font-medium flex items-center gap-1.5 animate-in fade-in slide-in-from-left-2" style={{ color: formData.theme_menu_highlight }}>
                             <CheckCircle className="w-4 h-4" />
                             Configuración guardada correctamente
                         </span>

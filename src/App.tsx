@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Layout } from './components/Layout';
 import { KanbanBoard } from './components/KanbanBoard';
 import { KPIs } from './components/KPIs';
@@ -17,6 +17,7 @@ import { AddMechanicModal } from './components/AddMechanicModal';
 import { EditTicketModal } from './components/EditTicketModal';
 import { SettingsForm } from './components/SettingsForm';
 import { Agenda } from './components/Agenda';
+import { PublicBookingModal } from './components/PublicBookingModal';
 
 type ViewState = 'login' | 'customer' | 'dashboard';
 
@@ -26,10 +27,12 @@ export default function App() {
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isAddMechanicModalOpen, setIsAddMechanicModalOpen] = useState(false);
+  const [isBookingModalOpen, setIsBookingModalOpen] = useState(false);
+  const [publicBranding, setPublicBranding] = useState<any>(null);
   const [editingTicket, setEditingTicket] = useState<Ticket | null>(null);
   const [searchedPatente, setSearchedPatente] = useState<string | null>(null);
 
-  const { isSuperAdmin } = useAuth();
+  const { isSuperAdmin, profile } = useAuth();
 
   const {
     // Garage operations
@@ -40,8 +43,20 @@ export default function App() {
     updateSettings,
     addMechanic, deleteMechanic,
     acceptQuotation, markNotificationAsRead,
-    clearFinishedTickets, deleteTicket
-  } = useGarageStore();
+    clearFinishedTickets, deleteTicket,
+    fetchCompanies, addPublicReminder, fetchPublicSettingsBySlug, fetchOccupiedReminders, fetchPublicVehicleInfo
+  } = useGarageStore(profile?.company_id);
+
+  useEffect(() => {
+    // Detect public branding from URL slug (?t=slug)
+    const params = new URLSearchParams(window.location.search);
+    const slug = params.get('t');
+    if (slug) {
+      fetchPublicSettingsBySlug(slug).then(data => {
+        setPublicBranding(data);
+      }).catch(err => console.error('Error fetching public branding:', err));
+    }
+  }, [fetchPublicSettingsBySlug]);
 
   const currentCustomerTicket = searchedPatente ? searchTicket(searchedPatente) : null;
 
@@ -71,7 +86,25 @@ export default function App() {
   };
 
   if (view === 'login') {
-    return <Login onLogin={handleLogin} onCustomerSearch={handleCustomerSearch} />;
+    return (
+      <>
+        <Login 
+          onLogin={handleLogin} 
+          onCustomerSearch={handleCustomerSearch} 
+          onOpenBooking={() => setIsBookingModalOpen(true)}
+          branding={publicBranding}
+        />
+        <PublicBookingModal
+          isOpen={isBookingModalOpen}
+          onClose={() => setIsBookingModalOpen(false)}
+          fetchCompanies={fetchCompanies}
+          onAddReminder={addPublicReminder}
+          fetchOccupied={fetchOccupiedReminders}
+          fetchVehicleInfo={fetchPublicVehicleInfo}
+          branding={publicBranding}
+        />
+      </>
+    );
   }
 
   if (view === 'customer') {
@@ -165,6 +198,7 @@ export default function App() {
         mechanics={mechanics}
         customers={customers}
         tickets={tickets}
+        settings={settings}
       />
 
       <AddMechanicModal

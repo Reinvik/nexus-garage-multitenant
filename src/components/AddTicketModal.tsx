@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { Mechanic, TicketStatus, Customer, Ticket } from '../types';
+import { Mechanic, TicketStatus, Customer, Ticket, GarageSettings } from '../types';
 import { X, Search, Info, UserPlus, History } from 'lucide-react';
 import { CAR_BRANDS, CAR_MODELS } from '../lib/carData';
 
@@ -10,9 +10,10 @@ interface AddTicketModalProps {
   mechanics: Mechanic[];
   customers: Customer[];
   tickets: Ticket[];
+  settings: GarageSettings | null;
 }
 
-export function AddTicketModal({ isOpen, onClose, onAdd, mechanics, customers, tickets }: AddTicketModalProps) {
+export function AddTicketModal({ isOpen, onClose, onAdd, mechanics, customers, tickets, settings }: AddTicketModalProps) {
   const [formData, setFormData] = useState({
     id: '',
     model: '',
@@ -37,6 +38,10 @@ export function AddTicketModal({ isOpen, onClose, onAdd, mechanics, customers, t
     return Array.from(models).sort();
   }, [tickets, customers]);
 
+  // Branding Colors
+  const primaryColor = settings?.theme_menu_highlight || '#10b981';
+  const primaryBg = `${primaryColor}15`;
+
   // Customer search state
   const [customerSearch, setCustomerSearch] = useState('');
   const [filteredCustomers, setFilteredCustomers] = useState<Customer[]>([]);
@@ -60,6 +65,7 @@ export function AddTicketModal({ isOpen, onClose, onAdd, mechanics, customers, t
   const selectCustomer = (customer: Customer) => {
     setFormData(prev => ({
       ...prev,
+      id: customer.vehicles?.[0] || prev.id,
       owner_name: customer.name,
       owner_phone: customer.phone,
       vin: customer.last_vin || prev.vin,
@@ -124,7 +130,7 @@ export function AddTicketModal({ isOpen, onClose, onAdd, mechanics, customers, t
           {/* Sección 1: Datos del Vehículo */}
           <div className="space-y-4">
             <div className="flex items-center gap-2 mb-4">
-              <div className="w-1 h-4 bg-emerald-500 rounded-full"></div>
+              <div className="w-1 h-4 rounded-full" style={{ backgroundColor: primaryColor }}></div>
               <h3 className="text-sm font-black text-zinc-900 uppercase tracking-widest">Información Básica</h3>
             </div>
 
@@ -135,7 +141,11 @@ export function AddTicketModal({ isOpen, onClose, onAdd, mechanics, customers, t
                   required
                   type="text"
                   placeholder="AB·CD·12"
-                  className="w-full px-4 py-2.5 rounded-xl border border-zinc-200 focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/10 outline-none transition-all font-mono font-black uppercase text-lg bg-zinc-50/30"
+                  className="w-full px-4 py-2.5 rounded-xl border border-zinc-200 outline-none transition-all font-mono font-black uppercase text-lg bg-zinc-50/30 focus:ring-4"
+                  style={{ 
+                    borderColor: formData.id ? primaryColor : undefined,
+                    boxShadow: formData.id ? `0 0 0 4px ${primaryColor}15` : undefined
+                  }}
                   value={formData.id}
                   onChange={e => setFormData({ ...formData, id: e.target.value.toUpperCase() })}
                 />
@@ -143,13 +153,17 @@ export function AddTicketModal({ isOpen, onClose, onAdd, mechanics, customers, t
               <div className="space-y-2 relative">
                 <label className="text-xs font-bold text-zinc-500 uppercase tracking-wider">Marca y Modelo</label>
                 <div className="relative group">
-                  <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-300 group-focus-within:text-emerald-500 transition-colors" />
+                  <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-300 transition-colors" style={{ color: formData.model ? primaryColor : undefined }} />
                   <input
                     required
                     list="car-models"
                     type="text"
                     placeholder="Eje: Toyota Yaris"
-                    className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-zinc-200 focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/10 outline-none transition-all font-bold text-zinc-800"
+                    className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-zinc-200 outline-none transition-all font-bold text-zinc-800 focus:ring-4"
+                    style={{ 
+                      borderColor: formData.model ? primaryColor : undefined,
+                      boxShadow: formData.model ? `0 0 0 4px ${primaryColor}15` : undefined
+                    }}
                     value={formData.model}
                     onChange={e => setFormData({ ...formData, model: e.target.value })}
                   />
@@ -182,7 +196,11 @@ export function AddTicketModal({ isOpen, onClose, onAdd, mechanics, customers, t
                 <input
                   type="text"
                   placeholder="17 caracteres..."
-                  className="w-full px-4 py-2.5 rounded-xl border border-zinc-200 focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/10 outline-none transition-all font-mono text-sm uppercase bg-zinc-50/30"
+                  className="w-full px-4 py-2.5 rounded-xl border border-zinc-200 outline-none transition-all font-mono text-sm uppercase bg-zinc-50/30 focus:ring-4"
+                  style={{ 
+                    borderColor: formData.vin ? primaryColor : undefined,
+                    boxShadow: formData.vin ? `0 0 0 4px ${primaryColor}15` : undefined
+                  }}
                   value={formData.vin}
                   onChange={e => setFormData({ ...formData, vin: e.target.value.toUpperCase() })}
                 />
@@ -192,7 +210,11 @@ export function AddTicketModal({ isOpen, onClose, onAdd, mechanics, customers, t
                 <input
                   type="text"
                   placeholder="ID del motor..."
-                  className="w-full px-4 py-2.5 rounded-xl border border-zinc-200 focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/10 outline-none transition-all font-mono text-sm uppercase bg-zinc-50/30"
+                  className="w-full px-4 py-2.5 rounded-xl border border-zinc-200 outline-none transition-all font-mono text-sm uppercase bg-zinc-50/30 focus:ring-4"
+                  style={{ 
+                    borderColor: formData.engine_id ? primaryColor : undefined,
+                    boxShadow: formData.engine_id ? `0 0 0 4px ${primaryColor}15` : undefined
+                  }}
                   value={formData.engine_id}
                   onChange={e => setFormData({ ...formData, engine_id: e.target.value.toUpperCase() })}
                 />
@@ -203,7 +225,11 @@ export function AddTicketModal({ isOpen, onClose, onAdd, mechanics, customers, t
                   <input
                     type="number"
                     placeholder="0"
-                    className="w-full px-4 py-2.5 rounded-xl border border-zinc-200 focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/10 outline-none transition-all font-bold text-zinc-800 pr-12 bg-zinc-50/30"
+                    className="w-full px-4 py-2.5 rounded-xl border border-zinc-200 outline-none transition-all font-bold text-zinc-800 pr-12 bg-zinc-50/30 focus:ring-4"
+                    style={{ 
+                      borderColor: formData.mileage ? primaryColor : undefined,
+                      boxShadow: formData.mileage ? `0 0 0 4px ${primaryColor}15` : undefined
+                    }}
                     value={formData.mileage || ''}
                     onChange={e => setFormData({ ...formData, mileage: parseInt(e.target.value) || 0 })}
                   />
@@ -222,13 +248,18 @@ export function AddTicketModal({ isOpen, onClose, onAdd, mechanics, customers, t
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="space-y-2 relative">
-                <label className="text-xs font-bold text-zinc-500 uppercase tracking-wider text-emerald-600">Buscar por Teléfono o Nombre</label>
+                <label className="text-xs font-bold text-zinc-500 uppercase tracking-wider" style={{ color: primaryColor }}>Buscar por Teléfono o Nombre</label>
                 <div className="relative">
-                  <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-emerald-500" />
+                  <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4" style={{ color: primaryColor }} />
                   <input
                     type="text"
                     placeholder="Ej: +569..."
-                    className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-emerald-200 focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/10 outline-none transition-all font-medium bg-emerald-50/10"
+                    className="w-full pl-10 pr-4 py-2.5 rounded-xl outline-none transition-all font-medium border"
+                    style={{ 
+                        backgroundColor: primaryBg,
+                        borderColor: `${primaryColor}40`,
+                        boxShadow: customerSearch.length >= 3 ? `0 0 0 4px ${primaryColor}15` : undefined
+                    }}
                     value={customerSearch}
                     onChange={e => {
                       setCustomerSearch(e.target.value);
@@ -243,7 +274,10 @@ export function AddTicketModal({ isOpen, onClose, onAdd, mechanics, customers, t
                           key={c.id}
                           type="button"
                           onClick={() => selectCustomer(c)}
-                          className="w-full px-4 py-3 text-left hover:bg-emerald-50 flex items-center justify-between border-b border-zinc-100 last:border-0"
+                          className="w-full px-4 py-3 text-left transition-colors flex items-center justify-between border-b border-zinc-100 last:border-0"
+                          style={{ '--hover-bg': primaryBg } as any}
+                          onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = primaryBg)}
+                          onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = '')}
                         >
                           <div>
                             <div className="font-bold text-zinc-900 text-sm">{c.name}</div>
@@ -266,7 +300,11 @@ export function AddTicketModal({ isOpen, onClose, onAdd, mechanics, customers, t
                   required
                   type="text"
                   placeholder="Nombre completo"
-                  className="w-full px-4 py-2.5 rounded-xl border border-zinc-200 focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/10 outline-none transition-all font-medium"
+                  className="w-full px-4 py-2.5 rounded-xl border border-zinc-200 outline-none transition-all font-medium focus:ring-4"
+                  style={{ 
+                    borderColor: formData.owner_name ? primaryColor : undefined,
+                    boxShadow: formData.owner_name ? `0 0 0 4px ${primaryColor}15` : undefined
+                  }}
                   value={formData.owner_name}
                   onChange={e => setFormData({ ...formData, owner_name: e.target.value })}
                 />
@@ -278,7 +316,11 @@ export function AddTicketModal({ isOpen, onClose, onAdd, mechanics, customers, t
             <div className="space-y-2">
               <label className="text-xs font-bold text-zinc-500 uppercase tracking-wider">Mecánico Asignado</label>
               <select
-                className="w-full px-4 py-2.5 rounded-xl border border-zinc-200 focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/10 outline-none transition-all bg-white font-bold text-zinc-700"
+                className="w-full px-4 py-2.5 rounded-xl border border-zinc-200 outline-none transition-all bg-white font-bold text-zinc-700 focus:ring-4"
+                style={{ 
+                    borderColor: formData.mechanic_id !== 'Sin asignar' ? primaryColor : undefined,
+                    boxShadow: formData.mechanic_id !== 'Sin asignar' ? `0 0 0 4px ${primaryColor}15` : undefined
+                }}
                 value={formData.mechanic_id}
                 onChange={e => setFormData({ ...formData, mechanic_id: e.target.value })}
               >
@@ -312,7 +354,11 @@ export function AddTicketModal({ isOpen, onClose, onAdd, mechanics, customers, t
             </button>
             <button
               type="submit"
-              className="px-8 py-3 text-sm font-black text-white bg-emerald-600 hover:bg-emerald-700 rounded-xl transition-all shadow-lg shadow-emerald-500/20 active:scale-95 flex items-center gap-2"
+              className="px-8 py-3 text-sm font-black text-white rounded-xl transition-all shadow-lg active:scale-95 flex items-center gap-2"
+              style={{ 
+                  backgroundColor: primaryColor,
+                  shadowColor: `${primaryColor}40`
+              }}
             >
               Registrar Vehículo
             </button>

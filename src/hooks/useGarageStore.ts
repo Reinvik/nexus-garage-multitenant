@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { Ticket, TicketStatus, Mechanic, Part, Customer, GarageSettings, Reminder, GarageNotification } from '../types';
 import { supabase, supabaseGarage } from '../lib/supabase';
 
-export function useGarageStore() {
+export function useGarageStore(companyId?: string) {
   const [tickets, setTickets] = useState<Ticket[]>([]);
   const [mechanics, setMechanics] = useState<Mechanic[]>([]);
   const [parts, setParts] = useState<Part[]>([]);
@@ -25,13 +25,13 @@ export function useGarageStore() {
         { data: remindersData },
         { data: notificationsData }
       ] = await Promise.all([
-        supabaseGarage.from('tickets').select('*').order('entry_date', { ascending: false }),
-        supabaseGarage.from('mechanics').select('*').order('name', { ascending: true }),
-        supabaseGarage.from('parts').select('*').order('name', { ascending: true }),
-        supabaseGarage.from('customers').select('*').order('name', { ascending: true }),
-        supabaseGarage.from('settings').select('*').maybeSingle(),
-        supabaseGarage.from('reminders').select('*').order('planned_date', { ascending: true }),
-        supabaseGarage.from('notifications').select('*').order('created_at', { ascending: false }).limit(20)
+        supabaseGarage.from('tickets').select('*').eq('company_id', companyId).order('entry_date', { ascending: false }),
+        supabaseGarage.from('mechanics').select('*').eq('company_id', companyId).order('name', { ascending: true }),
+        supabaseGarage.from('parts').select('*').eq('company_id', companyId).order('name', { ascending: true }),
+        supabaseGarage.from('customers').select('*').eq('company_id', companyId).order('name', { ascending: true }),
+        supabaseGarage.from('settings').select('*').eq('company_id', companyId).maybeSingle(),
+        supabaseGarage.from('reminders').select('*').eq('company_id', companyId).order('planned_date', { ascending: true }),
+        supabaseGarage.from('notifications').select('*').eq('company_id', companyId).order('created_at', { ascending: false }).limit(20)
       ]);
 
       // Map mechanic names to tickets if mechanic_id is present and mechanicsData is available
@@ -48,7 +48,13 @@ export function useGarageStore() {
       if (mechanicsData) setMechanics(mechanicsData as Mechanic[]);
       if (partsData) setParts(partsData as Part[]);
       if (customersData) setCustomers(customersData as Customer[]);
-      if (settingsData) setSettings(settingsData as GarageSettings);
+      
+      // Enriquecer settings con el slug de la compañía
+      if (settingsData) {
+        const { data: companyData } = await supabase.from('companies').select('slug').eq('id', settingsData.company_id).single();
+        setSettings({ ...settingsData, company_slug: companyData?.slug } as GarageSettings);
+      }
+      
       if (remindersData) setReminders(remindersData as Reminder[]);
       if (notificationsData) setNotifications(notificationsData as GarageNotification[]);
     } catch (error) {
@@ -56,7 +62,7 @@ export function useGarageStore() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [companyId]);
 
   useEffect(() => {
     fetchData();
@@ -87,6 +93,7 @@ export function useGarageStore() {
         // Primero intentamos buscar por teléfono (identificador más fiable)
         let { data: existingCustomer } = await supabaseGarage.from('customers')
           .select('id, vehicles, last_mileage, last_vin, last_engine_id, last_model')
+          .eq('company_id', companyId)
           .eq('phone', ticket.owner_phone)
           .maybeSingle();
 
@@ -94,6 +101,7 @@ export function useGarageStore() {
         if (!existingCustomer) {
           const { data: byName } = await supabaseGarage.from('customers')
             .select('id, vehicles, last_mileage, last_vin, last_engine_id, last_model')
+            .eq('company_id', companyId)
             .eq('name', ticket.owner_name)
             .limit(1)
             .maybeSingle();
@@ -117,10 +125,12 @@ export function useGarageStore() {
 
           await supabaseGarage.from('customers')
             .update(updates)
+            .eq('company_id', companyId)
             .eq('id', existingCustomer.id);
         } else {
           // Crear nuevo cliente con datos iniciales
           await supabaseGarage.from('customers').insert([{
+            company_id: companyId,
             name: ticket.owner_name,
             phone: ticket.owner_phone,
             vehicles: ticket.id ? [ticket.id] : [],
@@ -136,6 +146,7 @@ export function useGarageStore() {
       // 2. Comprobar si el vehículo ya tiene un ticket "vivo" o archivado
       const { data: existingTicket } = await supabaseGarage.from('tickets')
         .select('*')
+        .eq('company_id', companyId)
         .eq('id', ticket.id)
         .maybeSingle();
 
@@ -190,15 +201,9 @@ export function useGarageStore() {
           status_history: initialHistory,
           service_log: [],
           mechanic: ticket.mechanic_id === 'Sin asignar' ? null : ticket.mechanic_id,
-          owner_name: ticket.owner_name,
-          owner_phone: ticket.owner_phone,
-          notes: ticket.notes,
           parts_needed: ticket.parts_needed || [],
           entry_date: new Date().toISOString(),
           last_status_change: new Date().toISOString(),
-          vin: ticket.vin,
-          engine_id: ticket.engine_id,
-          mileage: ticket.mileage,
           vehicle_notes: ''
         }]);
 
@@ -339,11 +344,22 @@ export function useGarageStore() {
 
   const updateSettings = async (updates: Partial<GarageSettings>) => {
     try {
+      const { company_slug, ...settingsUpdates } = updates;
+
       if (settings?.id) {
         const { error } = await supabaseGarage.from('settings')
-          .update(updates)
+          .update(settingsUpdates)
           .eq('id', settings.id);
         if (error) throw error;
+
+        // Si se cambió el slug, actualizar la tabla companies
+        if (company_slug && settings.company_id) {
+          const { error: slugError } = await supabase
+            .from('companies')
+            .update({ slug: company_slug })
+            .eq('id', settings.company_id);
+          if (slugError) throw slugError;
+        }
       } else {
         // Fallback for companies created before the trigger
         const { data: { session } } = await supabase.auth.getSession();
@@ -551,6 +567,59 @@ export function useGarageStore() {
     },
     searchTicket,
     refreshData: fetchData,
+    fetchCompanies: useCallback(async () => {
+      const { data, error } = await supabase.from('companies').select('id, name, slug').order('name');
+      if (error) throw error;
+      return data;
+    }, []),
+    fetchPublicVehicleInfo: async (patente: string, company_id: string) => {
+      const normalizedInput = patente.replace(/[\s\.\-·]/g, '').toUpperCase();
+      const { data, error } = await supabaseGarage
+        .from('tickets')
+        .select('owner_name, owner_phone, model')
+        .eq('company_id', company_id)
+        .eq('id', normalizedInput)
+        .order('entry_date', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      if (error) throw error;
+      return data;
+    },
+    fetchPublicSettingsBySlug: async (slug: string) => {
+      // 1. Encontrar la empresa por slug
+      const { data: company, error: cError } = await supabase
+        .from('companies')
+        .select('id')
+        .eq('slug', slug)
+        .single();
+      
+      if (cError) throw cError;
+
+      // 2. Obtener los settings de esa empresa
+      const { data: settings, error: sError } = await supabaseGarage
+        .from('settings')
+        .select('*')
+        .eq('company_id', company.id)
+        .single();
+      
+      if (sError) throw sError;
+      return settings;
+    },
+    addPublicReminder: async (reminder: any) => {
+      const { error } = await supabaseGarage.from('reminders').insert([reminder]);
+      if (error) throw error;
+    },
+    fetchOccupiedReminders: async (companyId: string, date: string) => {
+      const { data, error } = await supabaseGarage
+        .from('reminders')
+        .select('planned_time')
+        .eq('company_id', companyId)
+        .eq('planned_date', date);
+      
+      if (error) throw error;
+      return (data || []).map(r => r.planned_time);
+    },
     clearFinishedTickets: async () => {
       try {
         const { error } = await supabaseGarage.from('tickets')

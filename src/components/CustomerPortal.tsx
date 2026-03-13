@@ -15,10 +15,12 @@ interface CustomerPortalProps {
 export function CustomerPortal({ ticket, settings, onBack, onAcceptQuotation }: CustomerPortalProps) {
   const [loading, setLoading] = React.useState(false);
 
+  const [logoError, setLogoError] = React.useState(false);
+
   if (!ticket) {
     return (
-      <div className="min-h-screen bg-zinc-50 flex flex-col items-center justify-center p-4 font-sans">
-        <div className="bg-white p-8 rounded-3xl shadow-xl max-w-md w-full text-center border border-zinc-100">
+      <div className="min-h-screen bg-zinc-50 flex flex-col items-center justify-center p-4 font-sans text-center">
+        <div className="bg-white p-8 rounded-3xl shadow-xl max-w-md w-full border border-zinc-100">
           <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-6">
             <AlertCircle className="w-8 h-8 text-red-600" />
           </div>
@@ -37,6 +39,9 @@ export function CustomerPortal({ ticket, settings, onBack, onAcceptQuotation }: 
       </div>
     );
   }
+
+  const primaryColor = settings?.theme_menu_highlight || '#10b981';
+  const primaryBg = primaryColor.startsWith('#') && primaryColor.length === 7 ? `${primaryColor}15` : 'rgba(16, 185, 129, 0.1)';
 
   const statusOrder: TicketStatus[] = [
     'Ingresado',
@@ -63,8 +68,17 @@ export function CustomerPortal({ ticket, settings, onBack, onAcceptQuotation }: 
         {/* Banner del Taller */}
         {settings && (
           <div className="text-center mb-6">
-            {settings.logo_url && (
-              <img src={settings.logo_url} alt={settings.workshop_name} className="w-14 h-14 rounded-2xl mx-auto mb-3 border border-zinc-200 shadow-sm object-cover" />
+            {settings.logo_url && !logoError ? (
+              <img 
+                src={settings.logo_url} 
+                alt={settings.workshop_name} 
+                onError={() => setLogoError(true)}
+                className="w-16 h-16 rounded-2xl mx-auto mb-3 border border-zinc-200 shadow-sm object-cover" 
+              />
+            ) : (
+              <div className="w-16 h-16 rounded-2xl mx-auto mb-3 border border-zinc-200 shadow-inner flex items-center justify-center" style={{ backgroundColor: primaryBg }}>
+                <Wrench className="w-8 h-8" style={{ color: primaryColor }} />
+              </div>
             )}
             <h1 className="text-2xl font-black tracking-tight text-zinc-900 uppercase">
               {settings.workshop_name}
@@ -92,18 +106,18 @@ export function CustomerPortal({ ticket, settings, onBack, onAcceptQuotation }: 
             <div>
               <div className="flex items-center gap-3 mb-2">
                 <div className="w-10 h-10 bg-zinc-800 rounded-xl flex items-center justify-center">
-                  <Car className="w-6 h-6 text-emerald-400" />
+                  <Car className="w-6 h-6" style={{ color: primaryColor }} />
                 </div>
                 <h1 className="text-3xl font-bold tracking-tight">{ticket.model}</h1>
               </div>
               <p className="text-zinc-400 font-medium flex items-center gap-2">
-                Patente: <span className="font-mono text-emerald-400 bg-zinc-800 px-2 py-0.5 rounded-md tracking-wider">{ticket.id}</span>
+                Patente: <span className="font-mono bg-zinc-800 px-2 py-0.5 rounded-md tracking-wider leading-none" style={{ color: primaryColor }}>{ticket.id}</span>
               </p>
             </div>
 
             <div className="bg-zinc-800/50 p-4 rounded-2xl border border-zinc-700/50 min-w-[200px]">
-              <p className="text-xs text-zinc-400 font-medium uppercase tracking-wider mb-1">Estado Actual</p>
-              <p className="text-xl font-bold text-emerald-400 flex items-center gap-2">
+              <p className="text-xs text-zinc-400 font-medium uppercase tracking-wider mb-1 text-center md:text-left">Estado Actual</p>
+              <p className="text-xl font-bold flex items-center justify-center md:justify-start gap-2" style={{ color: primaryColor }}>
                 {ticket.status === 'Finalizado' ? <CheckCircle2 className="w-5 h-5" /> : <Clock className="w-5 h-5" />}
                 {ticket.status}
               </p>
@@ -118,8 +132,11 @@ export function CustomerPortal({ ticket, settings, onBack, onAcceptQuotation }: 
             <div className="relative mb-12">
               <div className="absolute top-1/2 left-0 w-full h-1 bg-zinc-100 -translate-y-1/2 rounded-full"></div>
               <div
-                className="absolute top-1/2 left-0 h-1 bg-emerald-500 -translate-y-1/2 rounded-full transition-all duration-500"
-                style={{ width: `${(currentIndex / (statusOrder.length - 1)) * 100}%` }}
+                className="absolute top-1/2 left-0 h-1 -translate-y-1/2 rounded-full transition-all duration-500"
+                style={{ 
+                  width: `${(currentIndex / (statusOrder.length - 1)) * 100}%`,
+                  backgroundColor: primaryColor 
+                }}
               ></div>
 
               <div className="relative flex justify-between">
@@ -131,15 +148,19 @@ export function CustomerPortal({ ticket, settings, onBack, onAcceptQuotation }: 
                     <div key={status} className="flex flex-col items-center gap-3 w-24">
                       <div className={cn(
                         "w-8 h-8 rounded-full flex items-center justify-center border-2 transition-colors z-10 bg-white",
-                        isCompleted ? "border-emerald-500 text-emerald-500" : "border-zinc-200 text-zinc-300",
-                        isCurrent && "bg-emerald-50 border-emerald-500 shadow-[0_0_0_4px_rgba(16,185,129,0.1)]"
-                      )}>
+                        isCompleted ? "z-20" : "border-zinc-200 text-zinc-300"
+                      )} style={{ 
+                        borderColor: isCompleted ? primaryColor : undefined,
+                        color: isCompleted ? primaryColor : undefined,
+                        backgroundColor: isCurrent ? primaryBg : undefined,
+                        boxShadow: isCurrent ? `0 0 0 4px ${primaryBg}` : undefined
+                      }}>
                         {isCompleted ? <CheckCircle2 className="w-5 h-5" /> : <div className="w-2.5 h-2.5 rounded-full bg-current"></div>}
                       </div>
                       <span className={cn(
                         "text-xs font-semibold text-center leading-tight",
-                        isCurrent ? "text-emerald-700" : (isCompleted ? "text-zinc-700" : "text-zinc-400")
-                      )}>
+                        isCurrent ? "font-bold" : (isCompleted ? "text-zinc-700" : "text-zinc-400")
+                      )} style={{ color: isCurrent ? primaryColor : undefined }}>
                         {status}
                       </span>
                     </div>
@@ -172,7 +193,7 @@ export function CustomerPortal({ ticket, settings, onBack, onAcceptQuotation }: 
                   <ul className="space-y-2">
                     {ticket.parts_needed.map((part, idx) => (
                       <li key={idx} className="text-sm text-zinc-600 flex items-center gap-2">
-                        <div className="w-1.5 h-1.5 rounded-full bg-emerald-500"></div>
+                        <div className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: primaryColor }}></div>
                         {part}
                       </li>
                     ))}
@@ -187,17 +208,19 @@ export function CustomerPortal({ ticket, settings, onBack, onAcceptQuotation }: 
 
             {/* Quotation Section */}
             {ticket.status === 'En Espera' && ticket.quotation_total !== undefined && ticket.quotation_total > 0 && (
-              <div className="mt-8 p-8 bg-emerald-50 rounded-3xl border-2 border-emerald-100 flex flex-col md:flex-row items-center justify-between gap-6">
-                <div>
-                  <h4 className="text-emerald-900 font-bold text-xl mb-1">Cotización del Servicio</h4>
-                  <p className="text-emerald-700 font-medium">El diagnóstico está listo. Puedes autorizar el trabajo ahora.</p>
+              <div className="mt-8 p-8 rounded-3xl border-2 flex flex-col md:flex-row items-center justify-between gap-6" 
+                   style={{ backgroundColor: primaryBg, borderColor: `${primaryColor}20` }}>
+                <div className="text-center md:text-left">
+                  <h4 className="font-bold text-xl mb-1" style={{ color: primaryColor }}>Cotización del Servicio</h4>
+                  <p className="font-medium text-zinc-600">El diagnóstico está listo. Puedes autorizar el trabajo ahora.</p>
                 </div>
                 <div className="flex flex-col items-center md:items-end gap-3">
-                  <div className="text-3xl font-black text-emerald-900">
+                  <div className="text-3xl font-black" style={{ color: primaryColor }}>
                     ${ticket.quotation_total.toLocaleString('es-CL')}
                   </div>
                   {ticket.quotation_accepted ? (
-                    <div className="flex items-center gap-2 text-emerald-600 font-bold bg-white px-4 py-2 rounded-xl border border-emerald-200 shadow-sm">
+                    <div className="flex items-center gap-2 font-bold bg-white px-4 py-2 rounded-xl border shadow-sm"
+                         style={{ color: primaryColor, borderColor: `${primaryColor}30` }}>
                       <CheckCircle2 className="w-5 h-5" />
                       Cotización Aceptada
                     </div>
@@ -212,7 +235,8 @@ export function CustomerPortal({ ticket, settings, onBack, onAcceptQuotation }: 
                         }
                       }}
                       disabled={loading}
-                      className="w-full md:w-auto px-8 py-3 bg-emerald-600 hover:bg-emerald-700 disabled:bg-emerald-400 text-white rounded-xl font-bold transition-all shadow-lg shadow-emerald-200 flex items-center justify-center gap-2"
+                      className="w-full md:w-auto px-8 py-3 text-white rounded-xl font-bold transition-all shadow-lg flex items-center justify-center gap-2 disabled:opacity-50"
+                      style={{ backgroundColor: primaryColor, boxShadow: `0 10px 15px -3px ${primaryColor}40` }}
                     >
                       {loading ? (
                         <>

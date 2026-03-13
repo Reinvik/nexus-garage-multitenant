@@ -9,12 +9,16 @@ interface VehicleCRMModalProps {
   onClose: () => void;
   ticket: Ticket | null;
   onUpdateNotes: (id: string, notes: string) => Promise<void>;
+  settings?: any;
 }
 
-export function VehicleCRMModal({ isOpen, onClose, ticket, onUpdateNotes }: VehicleCRMModalProps) {
+export function VehicleCRMModal({ isOpen, onClose, ticket, onUpdateNotes, settings }: VehicleCRMModalProps) {
   const [isEditingNotes, setIsEditingNotes] = useState(false);
   const [notes, setNotes] = useState('');
   const [saving, setSaving] = useState(false);
+
+  const primaryColor = settings?.theme_menu_highlight || '#10b981';
+  const primaryBg = primaryColor.startsWith('#') && primaryColor.length === 7 ? `${primaryColor}20` : 'rgba(16, 185, 129, 0.2)';
 
   useEffect(() => {
     if (ticket) {
@@ -47,18 +51,18 @@ export function VehicleCRMModal({ isOpen, onClose, ticket, onUpdateNotes }: Vehi
         
         {/* Header */}
         <div className="bg-zinc-900 text-white p-6 md:p-8 flex items-start justify-between relative overflow-hidden">
-          <div className="absolute top-0 right-0 w-64 h-64 bg-emerald-500/10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2"></div>
+          <div className="absolute top-0 right-0 w-64 h-64 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2" style={{ backgroundColor: `${primaryColor}20` }}></div>
           
           <div className="flex gap-5 relative z-10">
             <div className="w-16 h-16 bg-zinc-800 rounded-2xl flex items-center justify-center border border-zinc-700 shadow-inner">
-              <Car className="w-8 h-8 text-zinc-300" />
+              <Car className="w-8 h-8" style={{ color: primaryColor }} />
             </div>
             <div>
               <div className="flex items-center gap-3 mb-1">
                 <h2 className="text-3xl font-black tracking-widest uppercase bg-white text-zinc-900 px-3 py-1 rounded-lg shadow-sm border-2 border-zinc-200">
                   {ticket.id}
                 </h2>
-                <span className="px-2.5 py-1 rounded-full bg-emerald-500/20 text-emerald-400 text-xs font-bold border border-emerald-500/30">
+                <span className="px-2.5 py-1 rounded-full text-xs font-bold border" style={{ backgroundColor: primaryBg, color: primaryColor, borderColor: `${primaryColor}30` }}>
                   {totalVisits} {totalVisits === 1 ? 'Visita' : 'Visitas'}
                 </span>
               </div>
@@ -157,11 +161,11 @@ export function VehicleCRMModal({ isOpen, onClose, ticket, onUpdateNotes }: Vehi
               {/* Visita Actual (si no está entregado) */}
               {ticket.status !== 'Entregado' && (
                 <div className="relative flex items-start gap-4">
-                  <div className="w-10 h-10 rounded-full border-4 border-zinc-50 bg-emerald-100 flex items-center justify-center z-10 text-emerald-600 flex-shrink-0">
+                  <div className="w-10 h-10 rounded-full border-4 border-zinc-50 flex items-center justify-center z-10 flex-shrink-0" style={{ backgroundColor: primaryBg, color: primaryColor }}>
                     <Wrench className="w-4 h-4" />
                   </div>
-                  <div className="flex-1 bg-white border border-emerald-200 rounded-2xl p-5 shadow-sm relative overflow-hidden">
-                    <div className="absolute top-0 right-0 px-3 py-1 bg-emerald-500 text-white text-[10px] font-bold rounded-bl-lg uppercase tracking-wider">
+                  <div className="flex-1 bg-white border rounded-2xl p-5 shadow-sm relative overflow-hidden" style={{ borderColor: `${primaryColor}30` }}>
+                    <div className="absolute top-0 right-0 px-3 py-1 text-white text-[10px] font-bold rounded-bl-lg uppercase tracking-wider" style={{ backgroundColor: primaryColor }}>
                       En progreso ({ticket.status})
                     </div>
                     <div className="font-bold text-zinc-900 mb-1">Servicio Actual</div>
